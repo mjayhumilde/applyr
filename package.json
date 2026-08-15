@@ -1,0 +1,14 @@
+{
+  "name": "applyr",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@applyr/web",
+    "build:web": "npm run build --workspace=@applyr/web",
+    "lint:web": "npm run lint --workspace=@applyr/web"
+  }
+}
