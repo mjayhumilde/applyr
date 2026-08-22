@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node --env-file-if-exists=.env --enable-source-maps dist/server.js",
+    "dev": "node --env-file-if-exists=.env --watch --enable-source-maps --import=tsx src/server.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

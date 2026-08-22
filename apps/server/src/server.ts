@@ -1,3 +1,3 @@
-const serverTest = "this is a server";
+import { env } from "./config/env.js";
 
-console.log(serverTest);
+console.log(env.PORT);
