@@ -1,5 +1,5 @@
 import { dummyApplications } from "../data/applications";
-import type { ApplicationStatus } from "../types/application";
+import type { ApplicationStatus } from "@applyr/contracts";
 
 const statusColors = {
   Applied: "bg-blue-100 text-blue-700",

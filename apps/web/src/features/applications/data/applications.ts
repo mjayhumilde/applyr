@@ -1,4 +1,4 @@
-import type { Application } from "../types/application";
+import type { Application } from "@applyr/contracts";
 
 export const dummyApplications = [
   {
