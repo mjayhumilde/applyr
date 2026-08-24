@@ -20,5 +20,12 @@ export const applicationSchema = z.object({
   events: z.array(applicationEventSchema),
 });
 
+export const applicationListResponseSchema = z.object({
+  data: z.array(applicationSchema),
+});
+
 export type ApplicationStatus = z.infer<typeof applicationStatusSchema>;
 export type Application = z.infer<typeof applicationSchema>;
+export type ApplicationListResponse = z.infer<
+  typeof applicationListResponseSchema
+>;
