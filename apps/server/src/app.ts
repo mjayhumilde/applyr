@@ -1,5 +1,7 @@
 import express, { type Express } from "express";
+
 import { healthRouter } from "./modules/health/health.route.js";
+import { applicationRouter } from "./modules/applications/application.route.js";
 
 export function createApp(): Express {
   const app = express();
@@ -12,6 +14,7 @@ export function createApp(): Express {
 
   // routes
   app.use("/api/health", healthRouter);
+  app.use("/api/applications", applicationRouter);
 
   return app;
 }
