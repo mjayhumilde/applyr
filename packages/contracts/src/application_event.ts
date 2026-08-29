@@ -6,4 +6,18 @@ export const applicationEventSchema = z.object({
   eventDate: z.iso.date(),
 });
 
+export const createApplicationEventRequestSchema = applicationEventSchema.omit({
+  id: true,
+});
+
+export const applicationEventResponseSchema = z.object({
+  data: applicationEventSchema,
+});
+
 export type ApplicationEvent = z.infer<typeof applicationEventSchema>;
+export type CreateApplicationEventRequest = z.infer<
+  typeof createApplicationEventRequestSchema
+>;
+export type ApplicationEventResponse = z.infer<
+  typeof applicationEventResponseSchema
+>;
