@@ -1,12 +1,22 @@
-import { applicationSchema, type Application } from "@applyr/contracts";
+import {
+  applicationSchema,
+  type Application,
+  type CreateApplicationRequest,
+} from "@applyr/contracts";
+import type { PoolClient } from "pg";
+import { z } from "zod";
 
 import { pool } from "../../db/pool.js";
 
 type RawApplicationRow = Record<string, unknown>;
+type RawIdRow = Record<string, unknown>;
 
 const applicationRowsSchema = applicationSchema.array();
+const idRowSchema = z.object({
+  id: z.number().int().positive(),
+});
 
-const findAllApplicationsSql = `
+const selectApplicationsSql = `
   SELECT
     a.id,
     jsonb_build_object(
@@ -37,6 +47,9 @@ const findAllApplicationsSql = `
     ON c.id = a.company_id
   LEFT JOIN public.application_events AS ae
     ON ae.application_id = a.id
+`;
+
+const groupApplicationsSql = `
   GROUP BY
     a.id,
     c.id,
@@ -47,13 +60,122 @@ const findAllApplicationsSql = `
     a.status,
     a.date_applied,
     a.notes
+`;
+
+const findAllApplicationsSql = `
+  ${selectApplicationsSql}
+  ${groupApplicationsSql}
   ORDER BY
     a.date_applied DESC,
     a.id DESC;
+`;
+
+const findApplicationByIdSql = `
+  ${selectApplicationsSql}
+  WHERE a.id = $1
+  ${groupApplicationsSql};
+`;
+
+const upsertCompanySql = `
+  INSERT INTO public.companies AS existing_company (
+    name,
+    website
+  )
+  VALUES ($1, $2)
+  ON CONFLICT (lower(btrim(name)))
+  DO UPDATE SET
+    website = COALESCE(existing_company.website, EXCLUDED.website)
+  RETURNING id;
+`;
+
+const insertApplicationSql = `
+  INSERT INTO public.applications (
+    company_id,
+    role,
+    job_post_link,
+    status,
+    date_applied,
+    notes
+  )
+  VALUES ($1, $2, $3, $4, $5, $6)
+  RETURNING id;
 `;
 
 export async function findAllApplications(): Promise<Application[]> {
   const result = await pool.query<RawApplicationRow>(findAllApplicationsSql);
 
   return applicationRowsSchema.parse(result.rows);
+}
+
+export async function findApplicationById(
+  applicationId: number,
+): Promise<Application | null> {
+  const result = await pool.query<RawApplicationRow>(findApplicationByIdSql, [
+    applicationId,
+  ]);
+
+  return parseApplicationRow(result.rows[0]);
+}
+
+export async function insertApplication(
+  input: CreateApplicationRequest,
+): Promise<Application> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const companyId = await upsertCompany(client, input.company);
+    const applicationIdResult = await client.query<RawIdRow>(
+      insertApplicationSql,
+      [
+        companyId,
+        input.role,
+        input.jobPostLink,
+        input.status,
+        input.dateApplied,
+        input.notes,
+      ],
+    );
+    const { id: applicationId } = idRowSchema.parse(
+      applicationIdResult.rows[0],
+    );
+
+    const applicationResult = await client.query<RawApplicationRow>(
+      findApplicationByIdSql,
+      [applicationId],
+    );
+    const application = parseApplicationRow(applicationResult.rows[0]);
+
+    if (application === null) {
+      throw new Error("Created application could not be loaded");
+    }
+
+    await client.query("COMMIT");
+
+    return application;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function upsertCompany(
+  client: PoolClient,
+  company: CreateApplicationRequest["company"],
+): Promise<number> {
+  const companyResult = await client.query<RawIdRow>(upsertCompanySql, [
+    company.name,
+    company.website,
+  ]);
+
+  return idRowSchema.parse(companyResult.rows[0]).id;
+}
+
+function parseApplicationRow(
+  row: RawApplicationRow | undefined,
+): Application | null {
+  return row === undefined ? null : applicationSchema.parse(row);
 }

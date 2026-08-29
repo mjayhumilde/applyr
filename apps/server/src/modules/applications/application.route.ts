@@ -1,6 +1,12 @@
 import { Router } from "express";
-import { getApplications } from "./application.controller.js";
+import {
+  createApplication,
+  getApplication,
+  getApplications,
+} from "./application.controller.js";
 
 export const applicationRouter = Router();
 
 applicationRouter.get("/", getApplications);
+applicationRouter.post("/", createApplication);
+applicationRouter.get("/:applicationId", getApplication);
