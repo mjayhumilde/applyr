@@ -3,6 +3,7 @@ import {
   applicationListResponseSchema,
   applicationResponseSchema,
   createApplicationRequestSchema,
+  updateApplicationRequestSchema,
 } from "@applyr/contracts";
 import type { Request, Response } from "express";
 
@@ -64,4 +65,52 @@ export async function createApplication(
     .location(`/api/applications/${application.id}`)
     .status(201)
     .json(responseBody);
+}
+
+export async function updateApplication(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { applicationId } = parseRequest(
+    applicationIdParamsSchema,
+    req.params,
+    "params",
+  );
+  const requestBody = parseRequest(
+    updateApplicationRequestSchema,
+    req.body,
+    "body",
+  );
+  const application = await applicationService.updateApplication(
+    applicationId,
+    requestBody,
+  );
+
+  if (application === null) {
+    throw new HttpError(404, "NOT_FOUND", "Application not found");
+  }
+
+  const responseBody = applicationResponseSchema.parse({
+    data: application,
+  });
+
+  res.status(200).json(responseBody);
+}
+
+export async function deleteApplication(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { applicationId } = parseRequest(
+    applicationIdParamsSchema,
+    req.params,
+    "params",
+  );
+  const wasDeleted = await applicationService.deleteApplication(applicationId);
+
+  if (!wasDeleted) {
+    throw new HttpError(404, "NOT_FOUND", "Application not found");
+  }
+
+  res.status(204).send();
 }
