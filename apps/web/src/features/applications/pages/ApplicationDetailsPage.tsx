@@ -1,9 +1,14 @@
-import { applicationIdParamsSchema, type Application } from "@applyr/contracts";
+import {
+  applicationIdParamsSchema,
+  type Application,
+  type ApplicationEvent,
+} from "@applyr/contracts";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { getApplication } from "../api/applications.api";
 import { ApplicationCard } from "../components/ApplicationCard";
+import { ApplicationEventForm } from "../components/ApplicationEventForm";
 
 type ApplicationDetailsState =
   | { status: "loading" }
@@ -65,6 +70,36 @@ const ApplicationDetailsPage = () => {
     };
   }, [parsedApplicationId]);
 
+  function addEventToTimeline(
+    applicationId: number,
+    event: ApplicationEvent,
+  ): void {
+    setState((currentState) => {
+      if (
+        currentState.status !== "success" ||
+        currentState.applicationId !== applicationId
+      ) {
+        return currentState;
+      }
+
+      const events = [...currentState.application.events, event].sort(
+        (left, right) => {
+          const dateComparison = left.eventDate.localeCompare(right.eventDate);
+
+          return dateComparison !== 0 ? dateComparison : left.id - right.id;
+        },
+      );
+
+      return {
+        ...currentState,
+        application: {
+          ...currentState.application,
+          events,
+        },
+      };
+    });
+  }
+
   return (
     <section className="mx-auto flex max-w-4xl flex-col gap-4 p-6 sm:p-10">
       <Link
@@ -101,10 +136,17 @@ const ApplicationDetailsPage = () => {
       {parsedApplicationId !== null &&
         state.status === "success" &&
         state.applicationId === parsedApplicationId && (
-          <ApplicationCard
-            application={state.application}
-            showDetailsLink={false}
-          />
+          <>
+            <ApplicationCard
+              application={state.application}
+              showDetailsLink={false}
+            />
+            <ApplicationEventForm
+              key={parsedApplicationId}
+              applicationId={parsedApplicationId}
+              onCreated={addEventToTimeline}
+            />
+          </>
         )}
     </section>
   );

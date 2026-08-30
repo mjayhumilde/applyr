@@ -1,8 +1,11 @@
 import {
   apiErrorResponseSchema,
+  applicationEventResponseSchema,
   applicationListResponseSchema,
   applicationResponseSchema,
   type Application,
+  type ApplicationEvent,
+  type CreateApplicationEventRequest,
   type CreateApplicationRequest,
 } from "@applyr/contracts";
 
@@ -104,4 +107,37 @@ export async function createApplication(
   }
 
   return applicationResult.data.data;
+}
+
+export async function createApplicationEvent(
+  applicationId: number,
+  input: CreateApplicationEventRequest,
+): Promise<ApplicationEvent> {
+  const response = await fetch(`/api/applications/${applicationId}/events`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  const responseBody: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const errorResult = apiErrorResponseSchema.safeParse(responseBody);
+
+    throw new Error(
+      errorResult.success
+        ? errorResult.data.error.message
+        : `Unable to create event (HTTP ${response.status})`,
+    );
+  }
+
+  const eventResult = applicationEventResponseSchema.safeParse(responseBody);
+
+  if (!eventResult.success) {
+    throw new Error("The server returned event data in an unexpected format");
+  }
+
+  return eventResult.data.data;
 }
