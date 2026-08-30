@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { createApplicationEvent } from "./application-event.controller.js";
 import {
   createApplication,
   deleteApplication,
@@ -14,3 +15,4 @@ applicationRouter.post("/", createApplication);
 applicationRouter.get("/:applicationId", getApplication);
 applicationRouter.put("/:applicationId", updateApplication);
 applicationRouter.delete("/:applicationId", deleteApplication);
+applicationRouter.post("/:applicationId/events", createApplicationEvent);
