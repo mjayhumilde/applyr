@@ -4,11 +4,12 @@ import {
   type ApplicationEvent,
 } from "@applyr/contracts";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { getApplication } from "../api/applications.api";
 import { ApplicationCard } from "../components/ApplicationCard";
 import { ApplicationEventForm } from "../components/ApplicationEventForm";
+import { DeleteApplicationButton } from "../components/DeleteApplicationButton";
 
 type ApplicationDetailsState =
   | { status: "loading" }
@@ -16,6 +17,7 @@ type ApplicationDetailsState =
   | { status: "error"; applicationId: number; message: string };
 
 const ApplicationDetailsPage = () => {
+  const navigate = useNavigate();
   const { applicationId } = useParams();
   const paramsResult = applicationIdParamsSchema.safeParse({ applicationId });
   const parsedApplicationId = paramsResult.success
@@ -137,12 +139,18 @@ const ApplicationDetailsPage = () => {
         state.status === "success" &&
         state.applicationId === parsedApplicationId && (
           <>
-            <Link
-              to={`/applications/${parsedApplicationId}/edit`}
-              className="w-fit rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
-            >
-              Edit application
-            </Link>
+            <div className="flex flex-wrap items-start gap-3">
+              <Link
+                to={`/applications/${parsedApplicationId}/edit`}
+                className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+              >
+                Edit application
+              </Link>
+              <DeleteApplicationButton
+                applicationId={parsedApplicationId}
+                onDeleted={() => navigate("/applications", { replace: true })}
+              />
+            </div>
             <ApplicationCard
               application={state.application}
               showDetailsLink={false}

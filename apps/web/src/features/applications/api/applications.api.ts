@@ -145,6 +145,28 @@ export async function updateApplication(
   return applicationResult.data.data;
 }
 
+export async function deleteApplication(applicationId: number): Promise<void> {
+  const response = await fetch(`/api/applications/${applicationId}`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (response.ok) {
+    return;
+  }
+
+  const responseBody: unknown = await response.json().catch(() => null);
+  const errorResult = apiErrorResponseSchema.safeParse(responseBody);
+
+  throw new Error(
+    errorResult.success
+      ? errorResult.data.error.message
+      : `Unable to delete application (HTTP ${response.status})`,
+  );
+}
+
 export async function createApplicationEvent(
   applicationId: number,
   input: CreateApplicationEventRequest,
