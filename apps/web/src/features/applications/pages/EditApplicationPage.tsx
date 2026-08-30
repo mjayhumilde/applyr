@@ -1,27 +1,43 @@
 import {
   applicationIdParamsSchema,
   type Application,
-  type ApplicationEvent,
+  type UpdateApplicationRequest,
 } from "@applyr/contracts";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
-import { getApplication } from "../api/applications.api";
-import { ApplicationCard } from "../components/ApplicationCard";
-import { ApplicationEventForm } from "../components/ApplicationEventForm";
+import { getApplication, updateApplication } from "../api/applications.api";
+import { ApplicationForm } from "../components/ApplicationForm";
 
-type ApplicationDetailsState =
+type EditApplicationState =
   | { status: "loading" }
   | { status: "success"; applicationId: number; application: Application }
   | { status: "error"; applicationId: number; message: string };
 
-const ApplicationDetailsPage = () => {
+function toApplicationFormValues(
+  application: Application,
+): UpdateApplicationRequest {
+  return {
+    company: {
+      name: application.company.name,
+      website: application.company.website,
+    },
+    role: application.role,
+    jobPostLink: application.jobPostLink,
+    status: application.status,
+    dateApplied: application.dateApplied,
+    notes: application.notes,
+  };
+}
+
+const EditApplicationPage = () => {
+  const navigate = useNavigate();
   const { applicationId } = useParams();
   const paramsResult = applicationIdParamsSchema.safeParse({ applicationId });
   const parsedApplicationId = paramsResult.success
     ? paramsResult.data.applicationId
     : null;
-  const [state, setState] = useState<ApplicationDetailsState>({
+  const [state, setState] = useState<EditApplicationState>({
     status: "loading",
   });
 
@@ -70,49 +86,36 @@ const ApplicationDetailsPage = () => {
     };
   }, [parsedApplicationId]);
 
-  function addEventToTimeline(
-    applicationId: number,
-    event: ApplicationEvent,
-  ): void {
-    setState((currentState) => {
-      if (
-        currentState.status !== "success" ||
-        currentState.applicationId !== applicationId
-      ) {
-        return currentState;
-      }
+  async function saveApplication(
+    input: UpdateApplicationRequest,
+  ): Promise<void> {
+    if (parsedApplicationId === null) {
+      throw new Error("Invalid application ID");
+    }
 
-      const events = [...currentState.application.events, event].sort(
-        (left, right) => {
-          const dateComparison = left.eventDate.localeCompare(right.eventDate);
-
-          return dateComparison !== 0 ? dateComparison : left.id - right.id;
-        },
-      );
-
-      return {
-        ...currentState,
-        application: {
-          ...currentState.application,
-          events,
-        },
-      };
-    });
+    await updateApplication(parsedApplicationId, input);
+    navigate(`/applications/${parsedApplicationId}`, { replace: true });
   }
 
   return (
-    <section className="mx-auto flex max-w-4xl flex-col gap-4 p-6 sm:p-10">
+    <section className="mx-auto max-w-2xl p-6 sm:p-10">
       <Link
-        to="/applications"
+        to={
+          parsedApplicationId === null
+            ? "/applications"
+            : `/applications/${parsedApplicationId}`
+        }
         className="text-sm font-medium text-blue-700 hover:underline"
       >
-        Back to applications
+        Back to application
       </Link>
 
-      <h1 className="text-3xl font-bold text-gray-900">Application details</h1>
+      <h1 className="mt-4 text-3xl font-bold text-gray-900">
+        Edit application
+      </h1>
 
       {parsedApplicationId === null && (
-        <p className="rounded-md bg-red-50 p-4 text-red-700" role="alert">
+        <p className="mt-6 rounded-md bg-red-50 p-4 text-red-700" role="alert">
           Invalid application ID
         </p>
       )}
@@ -120,7 +123,7 @@ const ApplicationDetailsPage = () => {
       {parsedApplicationId !== null &&
         (state.status === "loading" ||
           state.applicationId !== parsedApplicationId) && (
-          <p className="text-gray-600" aria-live="polite">
+          <p className="mt-6 text-gray-600" aria-live="polite">
             Loading application...
           </p>
         )}
@@ -128,7 +131,10 @@ const ApplicationDetailsPage = () => {
       {parsedApplicationId !== null &&
         state.status === "error" &&
         state.applicationId === parsedApplicationId && (
-          <p className="rounded-md bg-red-50 p-4 text-red-700" role="alert">
+          <p
+            className="mt-6 rounded-md bg-red-50 p-4 text-red-700"
+            role="alert"
+          >
             {state.message}
           </p>
         )}
@@ -136,26 +142,16 @@ const ApplicationDetailsPage = () => {
       {parsedApplicationId !== null &&
         state.status === "success" &&
         state.applicationId === parsedApplicationId && (
-          <>
-            <Link
-              to={`/applications/${parsedApplicationId}/edit`}
-              className="w-fit rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
-            >
-              Edit application
-            </Link>
-            <ApplicationCard
-              application={state.application}
-              showDetailsLink={false}
-            />
-            <ApplicationEventForm
-              key={parsedApplicationId}
-              applicationId={parsedApplicationId}
-              onCreated={addEventToTimeline}
-            />
-          </>
+          <ApplicationForm
+            key={state.application.id}
+            cancelTo={`/applications/${parsedApplicationId}`}
+            initialValues={toApplicationFormValues(state.application)}
+            onSubmit={saveApplication}
+            submitLabel="Update application"
+          />
         )}
     </section>
   );
 };
 
-export default ApplicationDetailsPage;
+export default EditApplicationPage;

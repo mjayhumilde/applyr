@@ -1,26 +1,91 @@
-import { applicationStatusSchema } from "@applyr/contracts";
-import type { SubmitEventHandler } from "react";
+import {
+  applicationStatusSchema,
+  createApplicationRequestSchema,
+  type CreateApplicationRequest,
+} from "@applyr/contracts";
+import { useState, type SubmitEvent } from "react";
 import { Link } from "react-router";
 
 interface ApplicationFormProps {
-  errorMessage: string | null;
-  isSubmitting: boolean;
-  onSubmit: SubmitEventHandler<HTMLFormElement>;
+  cancelTo?: string;
+  initialValues?: CreateApplicationRequest;
+  onSubmit: (input: CreateApplicationRequest) => Promise<void>;
+  submitLabel?: string;
 }
 
 const inputClassName =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none";
 
+function getTextValue(formData: FormData, fieldName: string): string {
+  const value = formData.get(fieldName);
+
+  return typeof value === "string" ? value : "";
+}
+
+function emptyStringToNull(value: string): string | null {
+  const trimmedValue = value.trim();
+
+  return trimmedValue === "" ? null : trimmedValue;
+}
+
 export function ApplicationForm({
-  errorMessage,
-  isSubmitting,
+  cancelTo = "/applications",
+  initialValues,
   onSubmit,
+  submitLabel = "Save application",
 }: ApplicationFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  async function handleSubmit(
+    event: SubmitEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    setErrorMessage(null);
+
+    const formData = new FormData(event.currentTarget);
+    const validationResult = createApplicationRequestSchema.safeParse({
+      company: {
+        name: getTextValue(formData, "companyName"),
+        website: emptyStringToNull(getTextValue(formData, "companyWebsite")),
+      },
+      role: getTextValue(formData, "role"),
+      jobPostLink: emptyStringToNull(getTextValue(formData, "jobPostLink")),
+      status: getTextValue(formData, "status"),
+      dateApplied: getTextValue(formData, "dateApplied"),
+      notes: emptyStringToNull(getTextValue(formData, "notes")),
+    });
+
+    if (!validationResult.success) {
+      setErrorMessage(
+        validationResult.error.issues[0]?.message ??
+          "Please check the form and try again",
+      );
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await onSubmit(validationResult.data);
+    } catch (error: unknown) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to save application",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <form
       className="mt-6 space-y-5 rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
       noValidate
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       {errorMessage !== null && (
         <p
@@ -40,6 +105,7 @@ export function ApplicationForm({
         </label>
         <input
           className={inputClassName}
+          defaultValue={initialValues?.company.name ?? ""}
           id="companyName"
           maxLength={255}
           name="companyName"
@@ -57,6 +123,7 @@ export function ApplicationForm({
         </label>
         <input
           className={inputClassName}
+          defaultValue={initialValues?.company.website ?? ""}
           id="companyWebsite"
           name="companyWebsite"
           placeholder="https://example.com"
@@ -70,6 +137,7 @@ export function ApplicationForm({
         </label>
         <input
           className={inputClassName}
+          defaultValue={initialValues?.role ?? ""}
           id="role"
           maxLength={255}
           name="role"
@@ -87,6 +155,7 @@ export function ApplicationForm({
         </label>
         <input
           className={inputClassName}
+          defaultValue={initialValues?.jobPostLink ?? ""}
           id="jobPostLink"
           name="jobPostLink"
           placeholder="https://example.com/jobs/123"
@@ -100,7 +169,7 @@ export function ApplicationForm({
         </label>
         <select
           className={inputClassName}
-          defaultValue="Applied"
+          defaultValue={initialValues?.status ?? "Applied"}
           id="status"
           name="status"
         >
@@ -121,6 +190,7 @@ export function ApplicationForm({
         </label>
         <input
           className={inputClassName}
+          defaultValue={initialValues?.dateApplied ?? ""}
           id="dateApplied"
           name="dateApplied"
           required
@@ -132,7 +202,13 @@ export function ApplicationForm({
         <label className="text-sm font-medium text-gray-800" htmlFor="notes">
           Notes <span className="text-gray-500">(optional)</span>
         </label>
-        <textarea className={inputClassName} id="notes" name="notes" rows={4} />
+        <textarea
+          className={inputClassName}
+          defaultValue={initialValues?.notes ?? ""}
+          id="notes"
+          name="notes"
+          rows={4}
+        />
       </div>
 
       <div className="flex items-center gap-3">
@@ -141,10 +217,10 @@ export function ApplicationForm({
           disabled={isSubmitting}
           type="submit"
         >
-          {isSubmitting ? "Saving..." : "Save application"}
+          {isSubmitting ? "Saving..." : submitLabel}
         </button>
         <Link
-          to="/applications"
+          to={cancelTo}
           className="rounded-md px-4 py-2 font-medium text-gray-700 hover:bg-gray-100"
         >
           Cancel
