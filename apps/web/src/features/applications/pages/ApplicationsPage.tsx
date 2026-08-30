@@ -1,9 +1,10 @@
-import type { Application } from "@applyr/contracts";
+import type { Application, ApplicationStatus } from "@applyr/contracts";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { getApplications } from "../api/applications.api";
 import { ApplicationCard } from "../components/ApplicationCard";
+import { ApplicationFilters } from "../components/ApplicationFilters";
 
 type ApplicationsState =
   | { status: "loading" }
@@ -13,6 +14,9 @@ type ApplicationsState =
 const ApplicationsPage = () => {
   const [state, setState] = useState<ApplicationsState>({ status: "loading" });
   const [requestVersion, setRequestVersion] = useState(0);
+  const [companyQuery, setCompanyQuery] = useState("");
+  const [dateApplied, setDateApplied] = useState("");
+  const [status, setStatus] = useState<ApplicationStatus | "">("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -51,10 +55,37 @@ const ApplicationsPage = () => {
     setRequestVersion((currentVersion) => currentVersion + 1);
   }
 
+  function clearFilters(): void {
+    setCompanyQuery("");
+    setDateApplied("");
+    setStatus("");
+  }
+
+  const normalizedCompanyQuery = companyQuery.trim().toLowerCase();
+  const filteredApplications =
+    state.status === "success"
+      ? state.applications.filter((application) => {
+          const matchesCompany = application.company.name
+            .toLowerCase()
+            .includes(normalizedCompanyQuery);
+          const matchesDate =
+            dateApplied === "" || application.dateApplied === dateApplied;
+          const matchesStatus = status === "" || application.status === status;
+
+          return matchesCompany && matchesDate && matchesStatus;
+        })
+      : [];
+
   return (
     <section className="mx-auto flex max-w-4xl flex-col gap-4 p-6 sm:p-10">
-      <header>
-        <h1 className="text-center text-3xl font-bold">Applications</h1>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold">Applications</h1>
+        <Link
+          to="/applications/new"
+          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+        >
+          Add application
+        </Link>
       </header>
 
       {state.status === "loading" && (
@@ -87,17 +118,40 @@ const ApplicationsPage = () => {
           <p className="mt-1 text-sm text-gray-600">
             Add your first job application to start tracking your search.
           </p>
-          <Link
-            to="/applications/new"
-            className="mt-4 inline-block rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
-          >
-            Add application
-          </Link>
         </div>
       )}
 
+      {state.status === "success" && state.applications.length > 0 && (
+        <ApplicationFilters
+          companyQuery={companyQuery}
+          dateApplied={dateApplied}
+          onClear={clearFilters}
+          onCompanyQueryChange={setCompanyQuery}
+          onDateAppliedChange={setDateApplied}
+          onStatusChange={setStatus}
+          status={status}
+        />
+      )}
+
       {state.status === "success" &&
-        state.applications.map((application) => (
+        state.applications.length > 0 &&
+        filteredApplications.length === 0 && (
+          <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
+            <p className="text-gray-600">
+              No applications match these filters.
+            </p>
+            <button
+              className="mt-3 text-sm font-medium text-blue-700 hover:underline"
+              onClick={clearFilters}
+              type="button"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
+      {state.status === "success" &&
+        filteredApplications.map((application) => (
           <ApplicationCard key={application.id} application={application} />
         ))}
     </section>
