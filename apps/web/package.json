@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "npm run build --workspace=@applyr/contracts",
     "dev": "vite",
+    "prebuild": "npm run build --workspace=@applyr/contracts",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

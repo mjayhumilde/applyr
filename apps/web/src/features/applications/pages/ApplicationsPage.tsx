@@ -1,82 +1,106 @@
-import { dummyApplications } from "../data/applications";
-import type { ApplicationStatus } from "@applyr/contracts";
+import type { Application } from "@applyr/contracts";
+import { useEffect, useState } from "react";
+import { Link } from "react-router";
 
-const statusColors = {
-  Applied: "bg-blue-100 text-blue-700",
-  Interview: "bg-yellow-100 text-yellow-700",
-  Offer: "bg-green-100 text-green-700",
-  Rejected: "bg-red-100 text-red-700",
-} satisfies Record<ApplicationStatus, string>;
+import { getApplications } from "../api/applications.api";
+import { ApplicationCard } from "../components/ApplicationCard";
+
+type ApplicationsState =
+  | { status: "loading" }
+  | { status: "success"; applications: Application[] }
+  | { status: "error"; message: string };
 
 const ApplicationsPage = () => {
+  const [state, setState] = useState<ApplicationsState>({ status: "loading" });
+  const [requestVersion, setRequestVersion] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadApplications(): Promise<void> {
+      try {
+        const applications = await getApplications(controller.signal);
+
+        if (!controller.signal.aborted) {
+          setState({ status: "success", applications });
+        }
+      } catch (error: unknown) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setState({
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to load applications",
+        });
+      }
+    }
+
+    void loadApplications();
+
+    return () => {
+      controller.abort();
+    };
+  }, [requestVersion]);
+
+  function retryLoadingApplications(): void {
+    setState({ status: "loading" });
+    setRequestVersion((currentVersion) => currentVersion + 1);
+  }
+
   return (
-    <div className="flex flex-col gap-4 p-40">
-      <div>
-        <h1 className="text-center text-3xl font-bold">APPLICATION PAGE</h1>
-      </div>
-      {dummyApplications.map((application) => (
+    <section className="mx-auto flex max-w-4xl flex-col gap-4 p-6 sm:p-10">
+      <header>
+        <h1 className="text-center text-3xl font-bold">Applications</h1>
+      </header>
+
+      {state.status === "loading" && (
+        <p className="text-center text-gray-600" aria-live="polite">
+          Loading applications...
+        </p>
+      )}
+
+      {state.status === "error" && (
         <div
-          key={application.id}
-          className="border rounded-lg p-4 shadow-sm bg-white"
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-center"
+          role="alert"
         >
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-lg font-semibold">{application.role}</h2>
-              <a
-                href={application.company.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-gray-500 hover:underline"
-              >
-                {application.company.name}
-              </a>
-            </div>
-
-            <span
-              className={`text-xs font-medium px-2 py-1 rounded-full ${
-                statusColors[application.status] ?? "bg-gray-100 text-gray-700"
-              }`}
-            >
-              {application.status}
-            </span>
-          </div>
-
-          <div className="mt-2 text-sm text-gray-600">
-            <p>Applied on: {application.dateApplied}</p>
-            <a
-              href={application.jobPostLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              View job post
-            </a>
-          </div>
-
-          {application.notes && (
-            <p className="mt-2 text-sm italic text-gray-500">
-              {application.notes}
-            </p>
-          )}
-
-          {application.events.length > 0 && (
-            <div className="mt-3 border-t pt-2">
-              <p className="text-xs font-semibold text-gray-500 mb-1">
-                Timeline
-              </p>
-              <ul className="text-sm text-gray-700 space-y-1">
-                {application.events.map((event) => (
-                  <li key={event.id} className="flex justify-between">
-                    <span>{event.eventType}</span>
-                    <span className="text-gray-400">{event.eventDate}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <p className="text-sm text-red-700">{state.message}</p>
+          <button
+            type="button"
+            className="mt-3 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
+            onClick={retryLoadingApplications}
+          >
+            Try again
+          </button>
         </div>
-      ))}
-    </div>
+      )}
+
+      {state.status === "success" && state.applications.length === 0 && (
+        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
+          <h2 className="text-lg font-semibold text-gray-900">
+            No applications yet
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Add your first job application to start tracking your search.
+          </p>
+          <Link
+            to="/applications/new"
+            className="mt-4 inline-block rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+          >
+            Add application
+          </Link>
+        </div>
+      )}
+
+      {state.status === "success" &&
+        state.applications.map((application) => (
+          <ApplicationCard key={application.id} application={application} />
+        ))}
+    </section>
   );
 };
 
