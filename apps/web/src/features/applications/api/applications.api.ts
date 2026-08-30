@@ -39,6 +39,39 @@ export async function getApplications(
   return applicationResult.data.data;
 }
 
+export async function getApplication(
+  applicationId: number,
+  signal?: AbortSignal,
+): Promise<Application> {
+  const response = await fetch(`/api/applications/${applicationId}`, {
+    headers: {
+      Accept: "application/json",
+    },
+    signal,
+  });
+  const responseBody: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const errorResult = apiErrorResponseSchema.safeParse(responseBody);
+
+    throw new Error(
+      errorResult.success
+        ? errorResult.data.error.message
+        : `Unable to load application (HTTP ${response.status})`,
+    );
+  }
+
+  const applicationResult = applicationResponseSchema.safeParse(responseBody);
+
+  if (!applicationResult.success) {
+    throw new Error(
+      "The server returned application data in an unexpected format",
+    );
+  }
+
+  return applicationResult.data.data;
+}
+
 export async function createApplication(
   input: CreateApplicationRequest,
 ): Promise<Application> {

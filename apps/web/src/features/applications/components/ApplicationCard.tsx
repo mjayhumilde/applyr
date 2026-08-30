@@ -1,7 +1,9 @@
 import type { Application, ApplicationStatus } from "@applyr/contracts";
+import { Link } from "react-router";
 
 interface ApplicationCardProps {
   application: Application;
+  showDetailsLink?: boolean;
 }
 
 const statusColors = {
@@ -11,7 +13,10 @@ const statusColors = {
   Rejected: "bg-red-100 text-red-700",
 } satisfies Record<ApplicationStatus, string>;
 
-export function ApplicationCard({ application }: ApplicationCardProps) {
+export function ApplicationCard({
+  application,
+  showDetailsLink = true,
+}: ApplicationCardProps) {
   return (
     <article className="rounded-lg border bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -75,6 +80,15 @@ export function ApplicationCard({ application }: ApplicationCardProps) {
             ))}
           </ul>
         </div>
+      )}
+
+      {showDetailsLink && (
+        <Link
+          to={`/applications/${application.id}`}
+          className="mt-4 inline-block text-sm font-medium text-blue-700 hover:underline"
+        >
+          View details
+        </Link>
       )}
     </article>
   );

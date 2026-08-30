@@ -1,8 +1,112 @@
+import { applicationIdParamsSchema, type Application } from "@applyr/contracts";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router";
+
+import { getApplication } from "../api/applications.api";
+import { ApplicationCard } from "../components/ApplicationCard";
+
+type ApplicationDetailsState =
+  | { status: "loading" }
+  | { status: "success"; applicationId: number; application: Application }
+  | { status: "error"; applicationId: number; message: string };
+
 const ApplicationDetailsPage = () => {
+  const { applicationId } = useParams();
+  const paramsResult = applicationIdParamsSchema.safeParse({ applicationId });
+  const parsedApplicationId = paramsResult.success
+    ? paramsResult.data.applicationId
+    : null;
+  const [state, setState] = useState<ApplicationDetailsState>({
+    status: "loading",
+  });
+
+  useEffect(() => {
+    if (parsedApplicationId === null) {
+      return;
+    }
+
+    const validApplicationId = parsedApplicationId;
+    const controller = new AbortController();
+
+    async function loadApplication(): Promise<void> {
+      try {
+        const application = await getApplication(
+          validApplicationId,
+          controller.signal,
+        );
+
+        if (!controller.signal.aborted) {
+          setState({
+            status: "success",
+            applicationId: validApplicationId,
+            application,
+          });
+        }
+      } catch (error: unknown) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setState({
+          status: "error",
+          applicationId: validApplicationId,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to load application",
+        });
+      }
+    }
+
+    void loadApplication();
+
+    return () => {
+      controller.abort();
+    };
+  }, [parsedApplicationId]);
+
   return (
-    <div>
-      <h1>Application Details</h1>
-    </div>
+    <section className="mx-auto flex max-w-4xl flex-col gap-4 p-6 sm:p-10">
+      <Link
+        to="/applications"
+        className="text-sm font-medium text-blue-700 hover:underline"
+      >
+        Back to applications
+      </Link>
+
+      <h1 className="text-3xl font-bold text-gray-900">Application details</h1>
+
+      {parsedApplicationId === null && (
+        <p className="rounded-md bg-red-50 p-4 text-red-700" role="alert">
+          Invalid application ID
+        </p>
+      )}
+
+      {parsedApplicationId !== null &&
+        (state.status === "loading" ||
+          state.applicationId !== parsedApplicationId) && (
+          <p className="text-gray-600" aria-live="polite">
+            Loading application...
+          </p>
+        )}
+
+      {parsedApplicationId !== null &&
+        state.status === "error" &&
+        state.applicationId === parsedApplicationId && (
+          <p className="rounded-md bg-red-50 p-4 text-red-700" role="alert">
+            {state.message}
+          </p>
+        )}
+
+      {parsedApplicationId !== null &&
+        state.status === "success" &&
+        state.applicationId === parsedApplicationId && (
+          <ApplicationCard
+            application={state.application}
+            showDetailsLink={false}
+          />
+        )}
+    </section>
   );
 };
 
