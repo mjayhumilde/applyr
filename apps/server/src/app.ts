@@ -5,6 +5,7 @@ import {
   notFoundHandler,
 } from "./middleware/error.middleware.js";
 import { applicationRouter } from "./modules/applications/application.route.js";
+import { dashboardRouter } from "./modules/dashboard/dashboard.route.js";
 import { healthRouter } from "./modules/health/health.route.js";
 
 export function createApp(): Express {
@@ -19,6 +20,7 @@ export function createApp(): Express {
   // routes
   app.use("/api/health", healthRouter);
   app.use("/api/applications", applicationRouter);
+  app.use("/api/dashboard", dashboardRouter);
 
   // fallback middleware: these must stay after all routes
   app.use(notFoundHandler);
