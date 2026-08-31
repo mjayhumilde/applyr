@@ -6,6 +6,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
+import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { getApplication, updateApplication } from "../api/applications.api";
 import { ApplicationForm } from "../components/ApplicationForm";
 
@@ -40,6 +41,8 @@ const EditApplicationPage = () => {
   const [state, setState] = useState<EditApplicationState>({
     status: "loading",
   });
+
+  useDocumentTitle("Edit Application");
 
   useEffect(() => {
     if (parsedApplicationId === null) {

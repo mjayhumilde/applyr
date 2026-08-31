@@ -1,6 +1,7 @@
 import type { Application, ApplicationStatus } from "@applyr/contracts";
 import { useEffect, useState } from "react";
 
+import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { getApplications } from "../api/applications.api";
 import { ApplicationCard } from "../components/ApplicationCard";
 import { ApplicationFilters } from "../components/ApplicationFilters";
@@ -16,6 +17,8 @@ const ApplicationsPage = () => {
   const [companyQuery, setCompanyQuery] = useState("");
   const [dateApplied, setDateApplied] = useState("");
   const [status, setStatus] = useState<ApplicationStatus | "">("");
+
+  useDocumentTitle("Applications");
 
   useEffect(() => {
     const controller = new AbortController();

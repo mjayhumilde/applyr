@@ -1,11 +1,14 @@
 import type { CreateApplicationRequest } from "@applyr/contracts";
 import { Link, useNavigate } from "react-router";
 
+import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { createApplication } from "../api/applications.api";
 import { ApplicationForm } from "../components/ApplicationForm";
 
 const NewApplicationPage = () => {
   const navigate = useNavigate();
+
+  useDocumentTitle("Add Application");
 
   async function saveApplication(
     input: CreateApplicationRequest,

@@ -6,6 +6,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
+import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { getApplication } from "../api/applications.api";
 import { ApplicationCard } from "../components/ApplicationCard";
 import { ApplicationEventForm } from "../components/ApplicationEventForm";
@@ -26,6 +27,8 @@ const ApplicationDetailsPage = () => {
   const [state, setState] = useState<ApplicationDetailsState>({
     status: "loading",
   });
+
+  useDocumentTitle("Application Details");
 
   useEffect(() => {
     if (parsedApplicationId === null) {

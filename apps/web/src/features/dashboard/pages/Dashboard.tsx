@@ -1,6 +1,7 @@
 import type { DashboardSummary } from "@applyr/contracts";
 import { useEffect, useState } from "react";
 
+import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { getDashboardSummary } from "../api/dashboard.api";
 import { DashboardHeader } from "../components/DashboardHeader";
 import { DashboardSummaryCards } from "../components/DashboardSummaryCards";
@@ -13,6 +14,8 @@ type DashboardState =
 const Dashboard = () => {
   const [state, setState] = useState<DashboardState>({ status: "loading" });
   const [requestVersion, setRequestVersion] = useState(0);
+
+  useDocumentTitle("Overview");
 
   useEffect(() => {
     const controller = new AbortController();
