@@ -7,8 +7,19 @@
     "packages/*"
   ],
   "scripts": {
+    "dev:server": "npm run dev --workspace=@applyr/server",
     "dev:web": "npm run dev --workspace=@applyr/web",
+    "db:check": "npm run db:check --workspace=@applyr/server",
+    "typecheck": "npm run typecheck:contracts && npm run typecheck:server && npm run typecheck:web",
+    "typecheck:contracts": "npm run typecheck --workspace=@applyr/contracts",
+    "typecheck:server": "npm run typecheck --workspace=@applyr/server",
+    "typecheck:web": "npm run typecheck --workspace=@applyr/web",
+    "build": "npm run build:contracts && npm run build:server && npm run build:web",
+    "build:contracts": "npm run build --workspace=@applyr/contracts",
+    "build:server": "npm run build --workspace=@applyr/server",
     "build:web": "npm run build --workspace=@applyr/web",
-    "lint:web": "npm run lint --workspace=@applyr/web"
+    "lint": "npm run lint:web",
+    "lint:web": "npm run lint --workspace=@applyr/web",
+    "verify": "npm run typecheck && npm run lint && npm run build"
   }
 }

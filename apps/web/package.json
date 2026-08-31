@@ -6,6 +6,8 @@
   "scripts": {
     "predev": "npm run build --workspace=@applyr/contracts",
     "dev": "vite",
+    "pretypecheck": "npm run build --workspace=@applyr/contracts",
+    "typecheck": "tsc -b --pretty false",
     "prebuild": "npm run build --workspace=@applyr/contracts",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

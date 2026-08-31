@@ -4,11 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "pretypecheck": "npm run build --workspace=@applyr/contracts",
     "typecheck": "tsc --noEmit",
+    "prebuild": "npm run build --workspace=@applyr/contracts",
     "build": "tsc",
     "start": "node --env-file-if-exists=.env --enable-source-maps dist/server.js",
+    "predev": "npm run build --workspace=@applyr/contracts",
     "dev": "node --env-file-if-exists=.env --watch --enable-source-maps --import=tsx src/server.ts",
-    "db:check": "node --env-file-if-exists=.env --enable-source-maps --import=tsx src/db/check-connection.ts"
+    "predb:check": "npm run build",
+    "db:check": "node --env-file-if-exists=.env --enable-source-maps dist/db/check-connection.js"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
