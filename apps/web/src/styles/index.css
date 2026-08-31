@@ -1,1 +1,88 @@
 @import "tailwindcss";
+
+@theme {
+  --color-ink: #182033;
+  --color-canvas: #f3f6fa;
+  --color-surface: #ffffff;
+  --color-muted: #626c7d;
+  --color-border: #d7deea;
+  --color-control: #828da0;
+  --color-action: #4056d6;
+  --color-action-hover: #3447b8;
+  --color-interview: #9b570b;
+  --color-offer: #13795b;
+  --color-danger: #b42318;
+
+  --font-sans:
+    "Atkinson Hyperlegible Next Variable", "Segoe UI", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-display:
+    "Familjen Grotesk Variable", "Arial Narrow", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-data:
+    ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono",
+    monospace;
+
+  --radius-control: 0.625rem;
+  --radius-panel: 0.875rem;
+
+  --shadow-panel:
+    0 1px 2px rgb(24 32 51 / 0.06), 0 8px 24px rgb(24 32 51 / 0.05);
+  --shadow-raised: 0 16px 40px rgb(24 32 51 / 0.12);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    min-width: 320px;
+    min-height: 100%;
+    color-scheme: light;
+    background-color: var(--color-canvas);
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background-color: rgb(64 86 214 / 0.22);
+    color: var(--color-ink);
+  }
+}
+
+/*
+ * This stays outside a cascade layer so it remains an accessibility baseline,
+ * even when an existing component uses Tailwind's focus:outline-none utility.
+ */
+:focus-visible {
+  outline: 3px solid var(--color-action);
+  outline-offset: 3px;
+}
