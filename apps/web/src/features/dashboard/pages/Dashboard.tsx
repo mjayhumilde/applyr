@@ -50,7 +50,7 @@ const Dashboard = () => {
   }
 
   return (
-    <section className="mx-auto flex max-w-4xl flex-col gap-6 p-6 sm:p-10">
+    <section className="flex flex-col gap-6">
       <DashboardHeader />
 
       {state.status === "loading" && (

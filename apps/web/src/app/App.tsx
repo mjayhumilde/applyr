@@ -5,7 +5,11 @@ const App = () => {
   return (
     <div className="min-h-screen">
       <AppHeader />
-      <main id="main-content" tabIndex={-1}>
+      <main
+        className="mx-auto w-full max-w-4xl p-6 sm:p-10"
+        id="main-content"
+        tabIndex={-1}
+      >
         <Outlet />
       </main>
     </div>

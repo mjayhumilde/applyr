@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 const NotFoundPage = () => {
   return (
-    <section className="mx-auto max-w-xl p-6 text-center sm:p-10">
+    <section className="mx-auto max-w-xl text-center">
       <h1 className="text-3xl font-bold text-gray-900">Page not found</h1>
       <p className="mt-2 text-gray-600">
         The page you requested does not exist.

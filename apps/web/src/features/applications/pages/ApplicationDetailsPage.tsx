@@ -103,7 +103,7 @@ const ApplicationDetailsPage = () => {
   }
 
   return (
-    <section className="mx-auto flex max-w-4xl flex-col gap-4 p-6 sm:p-10">
+    <section className="flex flex-col gap-4">
       <Link
         to="/applications"
         className="text-sm font-medium text-blue-700 hover:underline"

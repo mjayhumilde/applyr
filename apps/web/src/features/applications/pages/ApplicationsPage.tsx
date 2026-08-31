@@ -76,7 +76,7 @@ const ApplicationsPage = () => {
       : [];
 
   return (
-    <section className="mx-auto flex max-w-4xl flex-col gap-4 p-6 sm:p-10">
+    <section className="flex flex-col gap-4">
       <header>
         <h1 className="text-3xl font-bold">Applications</h1>
       </header>

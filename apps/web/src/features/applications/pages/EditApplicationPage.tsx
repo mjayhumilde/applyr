@@ -98,7 +98,7 @@ const EditApplicationPage = () => {
   }
 
   return (
-    <section className="mx-auto max-w-2xl p-6 sm:p-10">
+    <section className="mx-auto max-w-2xl">
       <Link
         to={
           parsedApplicationId === null
