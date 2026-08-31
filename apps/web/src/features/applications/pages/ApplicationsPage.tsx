@@ -1,7 +1,11 @@
 import type { Application, ApplicationStatus } from "@applyr/contracts";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 
+import { PageHeader } from "../../../shared/components/PageHeader";
+import { StatePanel } from "../../../shared/components/StatePanel";
 import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
+import { actionClassNames } from "../../../shared/styles/actionStyles";
 import { getApplications } from "../api/applications.api";
 import { ApplicationCard } from "../components/ApplicationCard";
 import { ApplicationFilters } from "../components/ApplicationFilters";
@@ -80,41 +84,35 @@ const ApplicationsPage = () => {
 
   return (
     <section className="flex flex-col gap-4">
-      <header>
-        <h1 className="text-3xl font-bold">Applications</h1>
-      </header>
+      <PageHeader
+        description="Review every role, status, and next step in one place."
+        title="Applications"
+      />
 
       {state.status === "loading" && (
-        <p className="text-center text-gray-600" aria-live="polite">
-          Loading applications...
-        </p>
+        <StatePanel message="Loading applications…" variant="loading" />
       )}
 
       {state.status === "error" && (
-        <div
-          className="rounded-lg border border-red-200 bg-red-50 p-4 text-center"
-          role="alert"
-        >
-          <p className="text-sm text-red-700">{state.message}</p>
-          <button
-            type="button"
-            className="mt-3 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
-            onClick={retryLoadingApplications}
-          >
-            Try again
-          </button>
-        </div>
+        <StatePanel
+          message={state.message}
+          retry={{ onClick: retryLoadingApplications }}
+          title="Unable to load applications"
+          variant="error"
+        />
       )}
 
       {state.status === "success" && state.applications.length === 0 && (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-          <h2 className="text-lg font-semibold text-gray-900">
-            No applications yet
-          </h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Add your first job application to start tracking your search.
-          </p>
-        </div>
+        <StatePanel
+          action={
+            <Link className={actionClassNames.primary} to="/applications/new">
+              Add your first application
+            </Link>
+          }
+          message="Add your first job application to start tracking your search."
+          title="No applications yet"
+          variant="empty"
+        />
       )}
 
       {state.status === "success" && state.applications.length > 0 && (
@@ -132,18 +130,20 @@ const ApplicationsPage = () => {
       {state.status === "success" &&
         state.applications.length > 0 &&
         filteredApplications.length === 0 && (
-          <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-            <p className="text-gray-600">
-              No applications match these filters.
-            </p>
-            <button
-              className="mt-3 text-sm font-medium text-blue-700 hover:underline"
-              onClick={clearFilters}
-              type="button"
-            >
-              Clear filters
-            </button>
-          </div>
+          <StatePanel
+            action={
+              <button
+                className={actionClassNames.secondary}
+                onClick={clearFilters}
+                type="button"
+              >
+                Clear filters
+              </button>
+            }
+            message="Clear or adjust the current filters to see more records."
+            title="No matching applications"
+            variant="empty"
+          />
         )}
 
       {state.status === "success" &&

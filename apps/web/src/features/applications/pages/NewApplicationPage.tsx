@@ -1,6 +1,7 @@
 import type { CreateApplicationRequest } from "@applyr/contracts";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 
+import { PageHeader } from "../../../shared/components/PageHeader";
 import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { createApplication } from "../api/applications.api";
 import { ApplicationForm } from "../components/ApplicationForm";
@@ -19,14 +20,11 @@ const NewApplicationPage = () => {
 
   return (
     <section className="mx-auto max-w-2xl">
-      <Link
-        to="/applications"
-        className="text-sm font-medium text-blue-700 hover:underline"
-      >
-        Back to applications
-      </Link>
-
-      <h1 className="mt-4 text-3xl font-bold text-gray-900">Add application</h1>
+      <PageHeader
+        backLink={{ label: "Back to applications", to: "/applications" }}
+        description="Record the role and tracking details for this opportunity."
+        title="Add application"
+      />
 
       <ApplicationForm onSubmit={saveApplication} />
     </section>

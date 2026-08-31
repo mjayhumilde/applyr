@@ -1,9 +1,10 @@
 import type { DashboardSummary } from "@applyr/contracts";
 import { useEffect, useState } from "react";
 
+import { PageHeader } from "../../../shared/components/PageHeader";
+import { StatePanel } from "../../../shared/components/StatePanel";
 import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { getDashboardSummary } from "../api/dashboard.api";
-import { DashboardHeader } from "../components/DashboardHeader";
 import { DashboardSummaryCards } from "../components/DashboardSummaryCards";
 
 type DashboardState =
@@ -54,28 +55,22 @@ const Dashboard = () => {
 
   return (
     <section className="flex flex-col gap-6">
-      <DashboardHeader />
+      <PageHeader
+        description="A quick view of your application pipeline."
+        title="Overview"
+      />
 
       {state.status === "loading" && (
-        <p className="text-center text-gray-600" aria-live="polite">
-          Loading dashboard...
-        </p>
+        <StatePanel message="Loading dashboard…" variant="loading" />
       )}
 
       {state.status === "error" && (
-        <div
-          className="rounded-lg border border-red-200 bg-red-50 p-4 text-center"
-          role="alert"
-        >
-          <p className="text-sm text-red-700">{state.message}</p>
-          <button
-            type="button"
-            className="mt-3 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
-            onClick={retryLoadingDashboard}
-          >
-            Try again
-          </button>
-        </div>
+        <StatePanel
+          message={state.message}
+          retry={{ onClick: retryLoadingDashboard }}
+          title="Unable to load the overview"
+          variant="error"
+        />
       )}
 
       {state.status === "success" && (

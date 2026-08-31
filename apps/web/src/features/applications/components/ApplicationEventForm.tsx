@@ -4,6 +4,7 @@ import {
 } from "@applyr/contracts";
 import { useState, type SubmitEvent } from "react";
 
+import { actionClassNames } from "../../../shared/styles/actionStyles";
 import { createApplicationEvent } from "../api/applications.api";
 
 interface ApplicationEventFormProps {
@@ -127,11 +128,11 @@ export function ApplicationEventForm({
       </div>
 
       <button
-        className="mt-4 rounded-md bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className={`${actionClassNames.primary} mt-4`}
         disabled={isSubmitting}
         type="submit"
       >
-        {isSubmitting ? "Saving..." : "Add event"}
+        {isSubmitting ? "Saving…" : "Add event"}
       </button>
     </form>
   );

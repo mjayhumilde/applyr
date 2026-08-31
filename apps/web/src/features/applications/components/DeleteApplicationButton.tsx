@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { actionClassNames } from "../../../shared/styles/actionStyles";
 import { deleteApplication } from "../api/applications.api";
 
 interface DeleteApplicationButtonProps {
@@ -40,12 +41,12 @@ export function DeleteApplicationButton({
   return (
     <div>
       <button
-        className="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className={actionClassNames.danger}
         disabled={isDeleting}
         onClick={() => void handleDelete()}
         type="button"
       >
-        {isDeleting ? "Deleting..." : "Delete application"}
+        {isDeleting ? "Deleting…" : "Delete application"}
       </button>
 
       {errorMessage !== null && (

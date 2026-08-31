@@ -4,8 +4,10 @@ import {
   type UpdateApplicationRequest,
 } from "@applyr/contracts";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
+import { PageHeader } from "../../../shared/components/PageHeader";
+import { StatePanel } from "../../../shared/components/StatePanel";
 import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { getApplication, updateApplication } from "../api/applications.api";
 import { ApplicationForm } from "../components/ApplicationForm";
@@ -102,44 +104,46 @@ const EditApplicationPage = () => {
 
   return (
     <section className="mx-auto max-w-2xl">
-      <Link
-        to={
-          parsedApplicationId === null
-            ? "/applications"
-            : `/applications/${parsedApplicationId}`
-        }
-        className="text-sm font-medium text-blue-700 hover:underline"
-      >
-        Back to application
-      </Link>
-
-      <h1 className="mt-4 text-3xl font-bold text-gray-900">
-        Edit application
-      </h1>
+      <PageHeader
+        backLink={{
+          label: "Back to application",
+          to:
+            parsedApplicationId === null
+              ? "/applications"
+              : `/applications/${parsedApplicationId}`,
+        }}
+        description="Update the company, role, and tracking details."
+        title="Edit application"
+      />
 
       {parsedApplicationId === null && (
-        <p className="mt-6 rounded-md bg-red-50 p-4 text-red-700" role="alert">
-          Invalid application ID
-        </p>
+        <div className="mt-6">
+          <StatePanel
+            message="The application address must contain a valid positive ID."
+            title="Invalid application ID"
+            variant="error"
+          />
+        </div>
       )}
 
       {parsedApplicationId !== null &&
         (state.status === "loading" ||
           state.applicationId !== parsedApplicationId) && (
-          <p className="mt-6 text-gray-600" aria-live="polite">
-            Loading application...
-          </p>
+          <div className="mt-6">
+            <StatePanel message="Loading application…" variant="loading" />
+          </div>
         )}
 
       {parsedApplicationId !== null &&
         state.status === "error" &&
         state.applicationId === parsedApplicationId && (
-          <p
-            className="mt-6 rounded-md bg-red-50 p-4 text-red-700"
-            role="alert"
-          >
-            {state.message}
-          </p>
+          <div className="mt-6">
+            <StatePanel
+              message={state.message}
+              title="Unable to load application"
+              variant="error"
+            />
+          </div>
         )}
 
       {parsedApplicationId !== null &&

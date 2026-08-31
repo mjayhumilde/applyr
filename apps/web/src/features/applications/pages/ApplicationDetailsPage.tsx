@@ -6,7 +6,10 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
+import { PageHeader } from "../../../shared/components/PageHeader";
+import { StatePanel } from "../../../shared/components/StatePanel";
 import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
+import { actionClassNames } from "../../../shared/styles/actionStyles";
 import { getApplication } from "../api/applications.api";
 import { ApplicationCard } from "../components/ApplicationCard";
 import { ApplicationEventForm } from "../components/ApplicationEventForm";
@@ -107,45 +110,15 @@ const ApplicationDetailsPage = () => {
 
   return (
     <section className="flex flex-col gap-4">
-      <Link
-        to="/applications"
-        className="text-sm font-medium text-blue-700 hover:underline"
-      >
-        Back to applications
-      </Link>
-
-      <h1 className="text-3xl font-bold text-gray-900">Application details</h1>
-
-      {parsedApplicationId === null && (
-        <p className="rounded-md bg-red-50 p-4 text-red-700" role="alert">
-          Invalid application ID
-        </p>
-      )}
-
-      {parsedApplicationId !== null &&
-        (state.status === "loading" ||
-          state.applicationId !== parsedApplicationId) && (
-          <p className="text-gray-600" aria-live="polite">
-            Loading application...
-          </p>
-        )}
-
-      {parsedApplicationId !== null &&
-        state.status === "error" &&
-        state.applicationId === parsedApplicationId && (
-          <p className="rounded-md bg-red-50 p-4 text-red-700" role="alert">
-            {state.message}
-          </p>
-        )}
-
-      {parsedApplicationId !== null &&
-        state.status === "success" &&
-        state.applicationId === parsedApplicationId && (
-          <>
-            <div className="flex flex-wrap items-start gap-3">
+      <PageHeader
+        actions={
+          parsedApplicationId !== null &&
+          state.status === "success" &&
+          state.applicationId === parsedApplicationId ? (
+            <>
               <Link
+                className={actionClassNames.primary}
                 to={`/applications/${parsedApplicationId}/edit`}
-                className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
               >
                 Edit application
               </Link>
@@ -153,7 +126,42 @@ const ApplicationDetailsPage = () => {
                 applicationId={parsedApplicationId}
                 onDeleted={() => navigate("/applications", { replace: true })}
               />
-            </div>
+            </>
+          ) : undefined
+        }
+        backLink={{ label: "Back to applications", to: "/applications" }}
+        description="Review the application record and log important events."
+        title="Application details"
+      />
+
+      {parsedApplicationId === null && (
+        <StatePanel
+          message="The application address must contain a valid positive ID."
+          title="Invalid application ID"
+          variant="error"
+        />
+      )}
+
+      {parsedApplicationId !== null &&
+        (state.status === "loading" ||
+          state.applicationId !== parsedApplicationId) && (
+          <StatePanel message="Loading application…" variant="loading" />
+        )}
+
+      {parsedApplicationId !== null &&
+        state.status === "error" &&
+        state.applicationId === parsedApplicationId && (
+          <StatePanel
+            message={state.message}
+            title="Unable to load application"
+            variant="error"
+          />
+        )}
+
+      {parsedApplicationId !== null &&
+        state.status === "success" &&
+        state.applicationId === parsedApplicationId && (
+          <>
             <ApplicationCard
               application={state.application}
               showDetailsLink={false}

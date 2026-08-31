@@ -6,6 +6,8 @@ import {
 import { useState, type SubmitEvent } from "react";
 import { Link } from "react-router";
 
+import { actionClassNames } from "../../../shared/styles/actionStyles";
+
 interface ApplicationFormProps {
   cancelTo?: string;
   initialValues?: CreateApplicationRequest;
@@ -211,18 +213,15 @@ export function ApplicationForm({
         />
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
-          className="rounded-md bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className={actionClassNames.primary}
           disabled={isSubmitting}
           type="submit"
         >
-          {isSubmitting ? "Saving..." : submitLabel}
+          {isSubmitting ? "Saving…" : submitLabel}
         </button>
-        <Link
-          to={cancelTo}
-          className="rounded-md px-4 py-2 font-medium text-gray-700 hover:bg-gray-100"
-        >
+        <Link to={cancelTo} className={actionClassNames.secondary}>
           Cancel
         </Link>
       </div>

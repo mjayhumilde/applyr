@@ -1,5 +1,7 @@
 import { Link, NavLink, type NavLinkRenderProps } from "react-router";
 
+import { actionClassNames } from "../../shared/styles/actionStyles";
+
 const navigationLinkClassName = ({ isActive }: NavLinkRenderProps): string => {
   const baseClassName =
     "inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap border-b-2 px-2 text-[0.8125rem] sm:w-auto sm:px-3 sm:text-sm";
@@ -20,7 +22,7 @@ export function AppHeader() {
       </a>
 
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto grid max-w-4xl grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 px-6 py-3 sm:flex sm:px-10">
+        <div className="mx-auto grid max-w-4xl gap-3 px-6 py-3 sm:flex sm:items-center sm:px-10">
           <Link
             className="flex min-h-11 shrink-0 items-center gap-3 rounded-control text-ink"
             to="/"
@@ -66,9 +68,9 @@ export function AppHeader() {
 
           <nav
             aria-label="Primary navigation"
-            className="order-3 col-span-2 w-full border-t border-border pt-3 sm:order-0 sm:ml-auto sm:w-auto sm:border-0 sm:pt-0"
+            className="w-full border-t border-border pt-3 sm:ml-auto sm:w-auto sm:border-0 sm:pt-0"
           >
-            <ul className="grid grid-cols-2 gap-1 sm:flex sm:items-center">
+            <ul className="flex flex-col gap-1 sm:flex-row sm:items-center">
               <li>
                 <NavLink className={navigationLinkClassName} end to="/">
                   Overview
@@ -83,7 +85,7 @@ export function AppHeader() {
           </nav>
 
           <Link
-            className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-control bg-action px-3 text-[0.8125rem] font-bold text-white shadow-sm hover:bg-action-hover sm:text-sm"
+            className={`${actionClassNames.primary} w-full sm:w-auto`}
             to="/applications/new"
           >
             Add application
