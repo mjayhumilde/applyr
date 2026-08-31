@@ -1,6 +1,5 @@
 import type { Application, ApplicationStatus } from "@applyr/contracts";
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 
 import { getApplications } from "../api/applications.api";
 import { ApplicationCard } from "../components/ApplicationCard";
@@ -78,14 +77,8 @@ const ApplicationsPage = () => {
 
   return (
     <section className="mx-auto flex max-w-4xl flex-col gap-4 p-6 sm:p-10">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header>
         <h1 className="text-3xl font-bold">Applications</h1>
-        <Link
-          to="/applications/new"
-          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
-        >
-          Add application
-        </Link>
       </header>
 
       {state.status === "loading" && (

@@ -12,7 +12,7 @@ const NotFoundPage = () => {
           to="/"
           className="rounded-md bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800"
         >
-          Go to dashboard
+          Go to overview
         </Link>
         <Link
           to="/applications"
