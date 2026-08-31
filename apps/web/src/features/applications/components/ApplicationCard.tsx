@@ -1,24 +1,19 @@
-import type { Application, ApplicationStatus } from "@applyr/contracts";
+import type { Application } from "@applyr/contracts";
 import { Link } from "react-router";
+
+import { StatusBadge } from "../../../shared/components/StatusBadge";
 
 interface ApplicationCardProps {
   application: Application;
   showDetailsLink?: boolean;
 }
 
-const statusColors = {
-  Applied: "bg-blue-100 text-blue-700",
-  Interview: "bg-yellow-100 text-yellow-700",
-  Offer: "bg-green-100 text-green-700",
-  Rejected: "bg-red-100 text-red-700",
-} satisfies Record<ApplicationStatus, string>;
-
 export function ApplicationCard({
   application,
   showDetailsLink = true,
 }: ApplicationCardProps) {
   return (
-    <article className="rounded-lg border bg-white p-4 shadow-sm">
+    <article className="rounded-panel border border-border bg-surface p-4 shadow-panel">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">{application.role}</h2>
@@ -36,11 +31,7 @@ export function ApplicationCard({
           )}
         </div>
 
-        <span
-          className={`rounded-full px-2 py-1 text-xs font-medium ${statusColors[application.status]}`}
-        >
-          {application.status}
-        </span>
+        <StatusBadge status={application.status} />
       </div>
 
       <div className="mt-2 text-sm text-gray-600">
