@@ -98,120 +98,144 @@ export function ApplicationForm({
         </p>
       )}
 
-      <div>
-        <label
-          className="text-sm font-medium text-gray-800"
-          htmlFor="companyName"
-        >
-          Company name
-        </label>
-        <input
-          className={inputClassName}
-          defaultValue={initialValues?.company.name ?? ""}
-          id="companyName"
-          maxLength={255}
-          name="companyName"
-          required
-          type="text"
-        />
-      </div>
+      <fieldset className="space-y-4 border-b border-border pb-5">
+        <legend className="font-display text-lg font-bold text-ink">
+          Company
+        </legend>
 
-      <div>
-        <label
-          className="text-sm font-medium text-gray-800"
-          htmlFor="companyWebsite"
-        >
-          Company website <span className="text-gray-500">(optional)</span>
-        </label>
-        <input
-          className={inputClassName}
-          defaultValue={initialValues?.company.website ?? ""}
-          id="companyWebsite"
-          name="companyWebsite"
-          placeholder="https://example.com"
-          type="url"
-        />
-      </div>
+        <div>
+          <label
+            className="text-sm font-medium text-gray-800"
+            htmlFor="companyName"
+          >
+            Company name
+          </label>
+          <input
+            className={inputClassName}
+            defaultValue={initialValues?.company.name ?? ""}
+            id="companyName"
+            maxLength={255}
+            name="companyName"
+            required
+            type="text"
+          />
+        </div>
 
-      <div>
-        <label className="text-sm font-medium text-gray-800" htmlFor="role">
-          Role
-        </label>
-        <input
-          className={inputClassName}
-          defaultValue={initialValues?.role ?? ""}
-          id="role"
-          maxLength={255}
-          name="role"
-          required
-          type="text"
-        />
-      </div>
+        <div>
+          <label
+            className="text-sm font-medium text-gray-800"
+            htmlFor="companyWebsite"
+          >
+            Company website <span className="text-gray-500">(optional)</span>
+          </label>
+          <input
+            className={inputClassName}
+            defaultValue={initialValues?.company.website ?? ""}
+            id="companyWebsite"
+            name="companyWebsite"
+            placeholder="https://example.com"
+            type="url"
+          />
+        </div>
+      </fieldset>
 
-      <div>
-        <label
-          className="text-sm font-medium text-gray-800"
-          htmlFor="jobPostLink"
-        >
-          Job post link <span className="text-gray-500">(optional)</span>
-        </label>
-        <input
-          className={inputClassName}
-          defaultValue={initialValues?.jobPostLink ?? ""}
-          id="jobPostLink"
-          name="jobPostLink"
-          placeholder="https://example.com/jobs/123"
-          type="url"
-        />
-      </div>
+      <fieldset className="space-y-4 border-b border-border pb-5">
+        <legend className="font-display text-lg font-bold text-ink">
+          Position
+        </legend>
 
-      <div>
-        <label className="text-sm font-medium text-gray-800" htmlFor="status">
-          Status
-        </label>
-        <select
-          className={inputClassName}
-          defaultValue={initialValues?.status ?? "Applied"}
-          id="status"
-          name="status"
-        >
-          {applicationStatusSchema.options.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div>
+          <label className="text-sm font-medium text-gray-800" htmlFor="role">
+            Role
+          </label>
+          <input
+            className={inputClassName}
+            defaultValue={initialValues?.role ?? ""}
+            id="role"
+            maxLength={255}
+            name="role"
+            required
+            type="text"
+          />
+        </div>
 
-      <div>
-        <label
-          className="text-sm font-medium text-gray-800"
-          htmlFor="dateApplied"
-        >
-          Date applied
-        </label>
-        <input
-          className={inputClassName}
-          defaultValue={initialValues?.dateApplied ?? ""}
-          id="dateApplied"
-          name="dateApplied"
-          required
-          type="date"
-        />
-      </div>
+        <div>
+          <label
+            className="text-sm font-medium text-gray-800"
+            htmlFor="jobPostLink"
+          >
+            Job post link <span className="text-gray-500">(optional)</span>
+          </label>
+          <input
+            className={inputClassName}
+            defaultValue={initialValues?.jobPostLink ?? ""}
+            id="jobPostLink"
+            name="jobPostLink"
+            placeholder="https://example.com/jobs/123"
+            type="url"
+          />
+        </div>
+      </fieldset>
 
-      <div>
-        <label className="text-sm font-medium text-gray-800" htmlFor="notes">
-          Notes <span className="text-gray-500">(optional)</span>
-        </label>
-        <textarea
-          className={inputClassName}
-          defaultValue={initialValues?.notes ?? ""}
-          id="notes"
-          name="notes"
-          rows={4}
-        />
-      </div>
+      <fieldset className="space-y-4 border-b border-border pb-5">
+        <legend className="font-display text-lg font-bold text-ink">
+          Tracking
+        </legend>
+
+        <div>
+          <label className="text-sm font-medium text-gray-800" htmlFor="status">
+            Status
+          </label>
+          <select
+            className={inputClassName}
+            defaultValue={initialValues?.status ?? "Applied"}
+            id="status"
+            name="status"
+          >
+            {applicationStatusSchema.options.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label
+            className="text-sm font-medium text-gray-800"
+            htmlFor="dateApplied"
+          >
+            Date applied
+          </label>
+          <input
+            className={inputClassName}
+            defaultValue={initialValues?.dateApplied ?? ""}
+            id="dateApplied"
+            name="dateApplied"
+            required
+            type="date"
+          />
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-4">
+        <legend className="font-display text-lg font-bold text-ink">
+          Notes
+        </legend>
+
+        <div>
+          <label className="text-sm font-medium text-gray-800" htmlFor="notes">
+            Notes <span className="text-gray-500">(optional)</span>
+          </label>
+          <textarea
+            className={inputClassName}
+            defaultValue={initialValues?.notes ?? ""}
+            id="notes"
+            name="notes"
+            rows={4}
+          />
+        </div>
+      </fieldset>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
