@@ -103,39 +103,41 @@ export function ApplicationForm({
           Company
         </legend>
 
-        <div>
-          <label
-            className="text-sm font-medium text-gray-800"
-            htmlFor="companyName"
-          >
-            Company name
-          </label>
-          <input
-            className={inputClassName}
-            defaultValue={initialValues?.company.name ?? ""}
-            id="companyName"
-            maxLength={255}
-            name="companyName"
-            required
-            type="text"
-          />
-        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label
+              className="text-sm font-medium text-gray-800"
+              htmlFor="companyName"
+            >
+              Company name
+            </label>
+            <input
+              className={inputClassName}
+              defaultValue={initialValues?.company.name ?? ""}
+              id="companyName"
+              maxLength={255}
+              name="companyName"
+              required
+              type="text"
+            />
+          </div>
 
-        <div>
-          <label
-            className="text-sm font-medium text-gray-800"
-            htmlFor="companyWebsite"
-          >
-            Company website <span className="text-gray-500">(optional)</span>
-          </label>
-          <input
-            className={inputClassName}
-            defaultValue={initialValues?.company.website ?? ""}
-            id="companyWebsite"
-            name="companyWebsite"
-            placeholder="https://example.com"
-            type="url"
-          />
+          <div>
+            <label
+              className="text-sm font-medium text-gray-800"
+              htmlFor="companyWebsite"
+            >
+              Company website <span className="text-gray-500">(optional)</span>
+            </label>
+            <input
+              className={inputClassName}
+              defaultValue={initialValues?.company.website ?? ""}
+              id="companyWebsite"
+              name="companyWebsite"
+              placeholder="https://example.com"
+              type="url"
+            />
+          </div>
         </div>
       </fieldset>
 
@@ -144,36 +146,38 @@ export function ApplicationForm({
           Position
         </legend>
 
-        <div>
-          <label className="text-sm font-medium text-gray-800" htmlFor="role">
-            Role
-          </label>
-          <input
-            className={inputClassName}
-            defaultValue={initialValues?.role ?? ""}
-            id="role"
-            maxLength={255}
-            name="role"
-            required
-            type="text"
-          />
-        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="text-sm font-medium text-gray-800" htmlFor="role">
+              Role
+            </label>
+            <input
+              className={inputClassName}
+              defaultValue={initialValues?.role ?? ""}
+              id="role"
+              maxLength={255}
+              name="role"
+              required
+              type="text"
+            />
+          </div>
 
-        <div>
-          <label
-            className="text-sm font-medium text-gray-800"
-            htmlFor="jobPostLink"
-          >
-            Job post link <span className="text-gray-500">(optional)</span>
-          </label>
-          <input
-            className={inputClassName}
-            defaultValue={initialValues?.jobPostLink ?? ""}
-            id="jobPostLink"
-            name="jobPostLink"
-            placeholder="https://example.com/jobs/123"
-            type="url"
-          />
+          <div>
+            <label
+              className="text-sm font-medium text-gray-800"
+              htmlFor="jobPostLink"
+            >
+              Job post link <span className="text-gray-500">(optional)</span>
+            </label>
+            <input
+              className={inputClassName}
+              defaultValue={initialValues?.jobPostLink ?? ""}
+              id="jobPostLink"
+              name="jobPostLink"
+              placeholder="https://example.com/jobs/123"
+              type="url"
+            />
+          </div>
         </div>
       </fieldset>
 
@@ -182,39 +186,44 @@ export function ApplicationForm({
           Tracking
         </legend>
 
-        <div>
-          <label className="text-sm font-medium text-gray-800" htmlFor="status">
-            Status
-          </label>
-          <select
-            className={inputClassName}
-            defaultValue={initialValues?.status ?? "Applied"}
-            id="status"
-            name="status"
-          >
-            {applicationStatusSchema.options.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label
+              className="text-sm font-medium text-gray-800"
+              htmlFor="status"
+            >
+              Status
+            </label>
+            <select
+              className={inputClassName}
+              defaultValue={initialValues?.status ?? "Applied"}
+              id="status"
+              name="status"
+            >
+              {applicationStatusSchema.options.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label
-            className="text-sm font-medium text-gray-800"
-            htmlFor="dateApplied"
-          >
-            Date applied
-          </label>
-          <input
-            className={inputClassName}
-            defaultValue={initialValues?.dateApplied ?? ""}
-            id="dateApplied"
-            name="dateApplied"
-            required
-            type="date"
-          />
+          <div>
+            <label
+              className="text-sm font-medium text-gray-800"
+              htmlFor="dateApplied"
+            >
+              Date applied
+            </label>
+            <input
+              className={inputClassName}
+              defaultValue={initialValues?.dateApplied ?? ""}
+              id="dateApplied"
+              name="dateApplied"
+              required
+              type="date"
+            />
+          </div>
         </div>
       </fieldset>
 
