@@ -16,7 +16,10 @@ const NewApplicationPage = () => {
   ): Promise<void> {
     const createdApplication = await createApplication(input);
 
-    navigate(`/applications/${createdApplication.id}`, { replace: true });
+    navigate(`/applications/${createdApplication.id}`, {
+      replace: true,
+      state: { saveResult: "created" },
+    });
   }
 
   return (

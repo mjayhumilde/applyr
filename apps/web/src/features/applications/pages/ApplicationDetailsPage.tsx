@@ -4,7 +4,7 @@ import {
   type ApplicationEvent,
 } from "@applyr/contracts";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 
 import { PageHeader } from "../../../shared/components/PageHeader";
 import { StatePanel } from "../../../shared/components/StatePanel";
@@ -20,9 +20,31 @@ type ApplicationDetailsState =
   | { status: "success"; applicationId: number; application: Application }
   | { status: "error"; applicationId: number; message: string };
 
+function getSaveSuccessMessage(locationState: unknown): string | null {
+  if (
+    typeof locationState !== "object" ||
+    locationState === null ||
+    !("saveResult" in locationState)
+  ) {
+    return null;
+  }
+
+  if (locationState.saveResult === "created") {
+    return "Application created.";
+  }
+
+  if (locationState.saveResult === "updated") {
+    return "Application updated.";
+  }
+
+  return null;
+}
+
 const ApplicationDetailsPage = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const { applicationId } = useParams();
+  const successMessage = getSaveSuccessMessage(location.state);
   const paramsResult = applicationIdParamsSchema.safeParse({ applicationId });
   const parsedApplicationId = paramsResult.success
     ? paramsResult.data.applicationId
@@ -133,6 +155,15 @@ const ApplicationDetailsPage = () => {
         description="Review the application record and log important events."
         title="Application details"
       />
+
+      {successMessage !== null && (
+        <p
+          className="rounded-control border border-success/30 bg-success/10 px-4 py-3 text-sm font-medium text-success"
+          role="status"
+        >
+          {successMessage}
+        </p>
+      )}
 
       {parsedApplicationId === null && (
         <StatePanel

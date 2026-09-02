@@ -99,7 +99,10 @@ const EditApplicationPage = () => {
     }
 
     await updateApplication(parsedApplicationId, input);
-    navigate(`/applications/${parsedApplicationId}`, { replace: true });
+    navigate(`/applications/${parsedApplicationId}`, {
+      replace: true,
+      state: { saveResult: "updated" },
+    });
   }
 
   return (
