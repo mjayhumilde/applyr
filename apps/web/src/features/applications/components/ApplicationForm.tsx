@@ -15,8 +15,55 @@ interface ApplicationFormProps {
   submitLabel?: string;
 }
 
+type ApplicationFormFieldName =
+  | "companyName"
+  | "companyWebsite"
+  | "role"
+  | "jobPostLink"
+  | "status"
+  | "dateApplied"
+  | "notes";
+
+type ApplicationFormFieldErrors = Partial<
+  Record<ApplicationFormFieldName, string>
+>;
+
+interface ValidationIssue {
+  message: string;
+  path: readonly PropertyKey[];
+}
+
+const fieldNameByIssuePath: Partial<Record<string, ApplicationFormFieldName>> =
+  {
+    "company.name": "companyName",
+    "company.website": "companyWebsite",
+    role: "role",
+    jobPostLink: "jobPostLink",
+    status: "status",
+    dateApplied: "dateApplied",
+    notes: "notes",
+  };
+
 const inputClassName =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none";
+const fieldErrorClassName = "mt-1 text-sm text-danger";
+
+function getFieldErrors(
+  issues: readonly ValidationIssue[],
+): ApplicationFormFieldErrors {
+  const fieldErrors: ApplicationFormFieldErrors = {};
+
+  for (const issue of issues) {
+    const issuePath = issue.path.map(String).join(".");
+    const fieldName = fieldNameByIssuePath[issuePath];
+
+    if (fieldName !== undefined && fieldErrors[fieldName] === undefined) {
+      fieldErrors[fieldName] = issue.message;
+    }
+  }
+
+  return fieldErrors;
+}
 
 function getTextValue(formData: FormData, fieldName: string): string {
   const value = formData.get(fieldName);
@@ -37,7 +84,12 @@ export function ApplicationForm({
   submitLabel = "Save application",
 }: ApplicationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<ApplicationFormFieldErrors>(
+    {},
+  );
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(
+    null,
+  );
 
   async function handleSubmit(
     event: SubmitEvent<HTMLFormElement>,
@@ -48,9 +100,12 @@ export function ApplicationForm({
       return;
     }
 
-    setErrorMessage(null);
+    setFieldErrors({});
+    setSubmitErrorMessage(null);
 
     const formData = new FormData(event.currentTarget);
+    console.log(formData);
+
     const validationResult = createApplicationRequestSchema.safeParse({
       company: {
         name: getTextValue(formData, "companyName"),
@@ -64,10 +119,7 @@ export function ApplicationForm({
     });
 
     if (!validationResult.success) {
-      setErrorMessage(
-        validationResult.error.issues[0]?.message ??
-          "Please check the form and try again",
-      );
+      setFieldErrors(getFieldErrors(validationResult.error.issues));
       return;
     }
 
@@ -75,7 +127,7 @@ export function ApplicationForm({
       setIsSubmitting(true);
       await onSubmit(validationResult.data);
     } catch (error: unknown) {
-      setErrorMessage(
+      setSubmitErrorMessage(
         error instanceof Error ? error.message : "Unable to save application",
       );
     } finally {
@@ -89,12 +141,12 @@ export function ApplicationForm({
       noValidate
       onSubmit={handleSubmit}
     >
-      {errorMessage !== null && (
+      {submitErrorMessage !== null && (
         <p
           className="rounded-md bg-red-50 p-3 text-sm text-red-700"
           role="alert"
         >
-          {errorMessage}
+          {submitErrorMessage}
         </p>
       )}
 
@@ -120,6 +172,9 @@ export function ApplicationForm({
               required
               type="text"
             />
+            {fieldErrors.companyName !== undefined && (
+              <p className={fieldErrorClassName}>{fieldErrors.companyName}</p>
+            )}
           </div>
 
           <div>
@@ -137,6 +192,11 @@ export function ApplicationForm({
               placeholder="https://example.com"
               type="url"
             />
+            {fieldErrors.companyWebsite !== undefined && (
+              <p className={fieldErrorClassName}>
+                {fieldErrors.companyWebsite}
+              </p>
+            )}
           </div>
         </div>
       </fieldset>
@@ -160,6 +220,9 @@ export function ApplicationForm({
               required
               type="text"
             />
+            {fieldErrors.role !== undefined && (
+              <p className={fieldErrorClassName}>{fieldErrors.role}</p>
+            )}
           </div>
 
           <div>
@@ -177,6 +240,9 @@ export function ApplicationForm({
               placeholder="https://example.com/jobs/123"
               type="url"
             />
+            {fieldErrors.jobPostLink !== undefined && (
+              <p className={fieldErrorClassName}>{fieldErrors.jobPostLink}</p>
+            )}
           </div>
         </div>
       </fieldset>
@@ -206,6 +272,9 @@ export function ApplicationForm({
                 </option>
               ))}
             </select>
+            {fieldErrors.status !== undefined && (
+              <p className={fieldErrorClassName}>{fieldErrors.status}</p>
+            )}
           </div>
 
           <div>
@@ -223,6 +292,9 @@ export function ApplicationForm({
               required
               type="date"
             />
+            {fieldErrors.dateApplied !== undefined && (
+              <p className={fieldErrorClassName}>{fieldErrors.dateApplied}</p>
+            )}
           </div>
         </div>
       </fieldset>
@@ -243,6 +315,9 @@ export function ApplicationForm({
             name="notes"
             rows={4}
           />
+          {fieldErrors.notes !== undefined && (
+            <p className={fieldErrorClassName}>{fieldErrors.notes}</p>
+          )}
         </div>
       </fieldset>
 
