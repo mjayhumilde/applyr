@@ -65,6 +65,20 @@ function getFieldErrors(
   return fieldErrors;
 }
 
+function focusFirstInvalidField(
+  form: HTMLFormElement,
+  fieldErrors: ApplicationFormFieldErrors,
+): void {
+  const invalidFieldNames = new Set(Object.keys(fieldErrors));
+  const firstInvalidField = Array.from(form.elements).find(
+    (element): element is HTMLElement =>
+      element instanceof HTMLElement &&
+      invalidFieldNames.has(element.getAttribute("name") ?? ""),
+  );
+
+  firstInvalidField?.focus();
+}
+
 function getTextValue(formData: FormData, fieldName: string): string {
   const value = formData.get(fieldName);
 
@@ -103,8 +117,8 @@ export function ApplicationForm({
     setFieldErrors({});
     setSubmitErrorMessage(null);
 
-    const formData = new FormData(event.currentTarget);
-    console.log(formData);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
     const validationResult = createApplicationRequestSchema.safeParse({
       company: {
@@ -119,7 +133,10 @@ export function ApplicationForm({
     });
 
     if (!validationResult.success) {
-      setFieldErrors(getFieldErrors(validationResult.error.issues));
+      const nextFieldErrors = getFieldErrors(validationResult.error.issues);
+
+      setFieldErrors(nextFieldErrors);
+      focusFirstInvalidField(form, nextFieldErrors);
       return;
     }
 
