@@ -1,6 +1,10 @@
-import type { Application, ApplicationStatus } from "@applyr/contracts";
+import {
+  applicationStatusSchema,
+  type Application,
+  type ApplicationStatus,
+} from "@applyr/contracts";
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { PageHeader } from "../../../shared/components/PageHeader";
 import { StatePanel } from "../../../shared/components/StatePanel";
@@ -20,7 +24,14 @@ const ApplicationsPage = () => {
   const [requestVersion, setRequestVersion] = useState(0);
   const [companyQuery, setCompanyQuery] = useState("");
   const [dateApplied, setDateApplied] = useState("");
-  const [status, setStatus] = useState<ApplicationStatus | "">("");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const statusResult = applicationStatusSchema.safeParse(
+    searchParams.get("status"),
+  );
+  const status: ApplicationStatus | "" = statusResult.success
+    ? statusResult.data
+    : "";
 
   useDocumentTitle("Applications");
 
@@ -64,7 +75,24 @@ const ApplicationsPage = () => {
   function clearFilters(): void {
     setCompanyQuery("");
     setDateApplied("");
-    setStatus("");
+    updateStatusFilter("");
+  }
+
+  function updateStatusFilter(nextStatus: ApplicationStatus | ""): void {
+    setSearchParams(
+      (currentSearchParams) => {
+        const nextSearchParams = new URLSearchParams(currentSearchParams);
+
+        if (nextStatus === "") {
+          nextSearchParams.delete("status");
+        } else {
+          nextSearchParams.set("status", nextStatus);
+        }
+
+        return nextSearchParams;
+      },
+      { replace: true },
+    );
   }
 
   const normalizedCompanyQuery = companyQuery.trim().toLowerCase();
@@ -122,7 +150,7 @@ const ApplicationsPage = () => {
           onClear={clearFilters}
           onCompanyQueryChange={setCompanyQuery}
           onDateAppliedChange={setDateApplied}
-          onStatusChange={setStatus}
+          onStatusChange={updateStatusFilter}
           status={status}
         />
       )}
