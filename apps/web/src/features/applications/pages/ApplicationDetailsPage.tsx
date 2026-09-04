@@ -49,6 +49,7 @@ const ApplicationDetailsPage = () => {
   const parsedApplicationId = paramsResult.success
     ? paramsResult.data.applicationId
     : null;
+  const applicationsListUrl = `/applications${location.search}`;
   const [state, setState] = useState<ApplicationDetailsState>({
     status: "loading",
   });
@@ -140,18 +141,20 @@ const ApplicationDetailsPage = () => {
             <>
               <Link
                 className={actionClassNames.primary}
-                to={`/applications/${parsedApplicationId}/edit`}
+                to={`/applications/${parsedApplicationId}/edit${location.search}`}
               >
                 Edit application
               </Link>
               <DeleteApplicationButton
                 applicationId={parsedApplicationId}
-                onDeleted={() => navigate("/applications", { replace: true })}
+                onDeleted={() =>
+                  navigate(applicationsListUrl, { replace: true })
+                }
               />
             </>
           ) : undefined
         }
-        backLink={{ label: "Back to applications", to: "/applications" }}
+        backLink={{ label: "Back to applications", to: applicationsListUrl }}
         description="Review the application record and log important events."
         title="Application details"
       />

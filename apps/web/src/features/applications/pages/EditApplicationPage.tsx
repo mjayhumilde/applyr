@@ -4,7 +4,7 @@ import {
   type UpdateApplicationRequest,
 } from "@applyr/contracts";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 
 import { PageHeader } from "../../../shared/components/PageHeader";
 import { StatePanel } from "../../../shared/components/StatePanel";
@@ -34,6 +34,7 @@ function toApplicationFormValues(
 }
 
 const EditApplicationPage = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const { applicationId } = useParams();
   const paramsResult = applicationIdParamsSchema.safeParse({ applicationId });
@@ -99,7 +100,7 @@ const EditApplicationPage = () => {
     }
 
     await updateApplication(parsedApplicationId, input);
-    navigate(`/applications/${parsedApplicationId}`, {
+    navigate(`/applications/${parsedApplicationId}${location.search}`, {
       replace: true,
       state: { saveResult: "updated" },
     });
@@ -112,8 +113,8 @@ const EditApplicationPage = () => {
           label: "Back to application",
           to:
             parsedApplicationId === null
-              ? "/applications"
-              : `/applications/${parsedApplicationId}`,
+              ? `/applications${location.search}`
+              : `/applications/${parsedApplicationId}${location.search}`,
         }}
         description="Update the company, role, and tracking details."
         title="Edit application"
@@ -154,7 +155,7 @@ const EditApplicationPage = () => {
         state.applicationId === parsedApplicationId && (
           <ApplicationForm
             key={state.application.id}
-            cancelTo={`/applications/${parsedApplicationId}`}
+            cancelTo={`/applications/${parsedApplicationId}${location.search}`}
             initialValues={toApplicationFormValues(state.application)}
             onSubmit={saveApplication}
             submitLabel="Update application"
