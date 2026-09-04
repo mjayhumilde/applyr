@@ -1,39 +1,126 @@
 import {
-  applicationStatusSchema,
   type Application,
   type ApplicationStatus,
 } from "@applyr/contracts";
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 
 import { PageHeader } from "../../../shared/components/PageHeader";
 import { StatePanel } from "../../../shared/components/StatePanel";
 import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { actionClassNames } from "../../../shared/styles/actionStyles";
 import { getApplications } from "../api/applications.api";
-import { ApplicationCard } from "../components/ApplicationCard";
 import { ApplicationFilters } from "../components/ApplicationFilters";
+import { ApplicationList } from "../components/ApplicationList";
+import {
+  applicationListSearchParamsSchema,
+  type ApplicationListSearchParams,
+  type ApplicationListSort,
+} from "../schemas/applicationListSearchParams";
 
 type ApplicationsState =
   | { status: "loading" }
   | { status: "success"; applications: Application[] }
   | { status: "error"; message: string };
 
+const applicationStatusOrder = {
+  Applied: 0,
+  Interview: 1,
+  Offer: 2,
+  Rejected: 3,
+} satisfies Record<ApplicationStatus, number>;
+
+function sortApplications(
+  applications: Application[],
+  sort: ApplicationListSort,
+): Application[] {
+  return [...applications].sort((left, right) => {
+    if (sort === "oldest") {
+      return (
+        left.dateApplied.localeCompare(right.dateApplied) || left.id - right.id
+      );
+    }
+
+    if (sort === "status") {
+      return (
+        applicationStatusOrder[left.status] -
+          applicationStatusOrder[right.status] ||
+        right.dateApplied.localeCompare(left.dateApplied) ||
+        right.id - left.id
+      );
+    }
+
+    return (
+      right.dateApplied.localeCompare(left.dateApplied) || right.id - left.id
+    );
+  });
+}
+
+function getCanonicalSearch(
+  searchParams: URLSearchParams,
+  values: ApplicationListSearchParams,
+): string | null {
+  const nextSearchParams = new URLSearchParams(searchParams);
+  const knownSearchParams = [
+    ["company", values.company],
+    ["date", values.date],
+    ["sort", values.sort],
+    ["status", values.status],
+  ] as const satisfies ReadonlyArray<
+    readonly [keyof ApplicationListSearchParams, string]
+  >;
+  let didChange = false;
+
+  for (const [name, value] of knownSearchParams) {
+    const currentValues = searchParams.getAll(name);
+    const shouldBeOmitted =
+      value === "" || (name === "sort" && value === "newest");
+
+    if (shouldBeOmitted) {
+      if (currentValues.length > 0) {
+        nextSearchParams.delete(name);
+        didChange = true;
+      }
+
+      continue;
+    }
+
+    if (currentValues.length !== 1 || currentValues[0] !== value) {
+      nextSearchParams.set(name, value);
+      didChange = true;
+    }
+  }
+
+  return didChange ? nextSearchParams.toString() : null;
+}
+
 const ApplicationsPage = () => {
   const [state, setState] = useState<ApplicationsState>({ status: "loading" });
   const [requestVersion, setRequestVersion] = useState(0);
-  const [companyQuery, setCompanyQuery] = useState("");
-  const [dateApplied, setDateApplied] = useState("");
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const statusResult = applicationStatusSchema.safeParse(
-    searchParams.get("status"),
-  );
-  const status: ApplicationStatus | "" = statusResult.success
-    ? statusResult.data
-    : "";
+  const listSearchParams = applicationListSearchParamsSchema.parse({
+    company: searchParams.get("company") ?? "",
+    date: searchParams.get("date") ?? "",
+    sort: searchParams.get("sort") ?? "newest",
+    status: searchParams.get("status") ?? "",
+  });
+  const {
+    company: companyQuery,
+    date: dateApplied,
+    sort,
+    status,
+  } = listSearchParams;
+  const canonicalSearch = getCanonicalSearch(searchParams, listSearchParams);
 
   useDocumentTitle("Applications");
+
+  useEffect(() => {
+    if (canonicalSearch !== null) {
+      setSearchParams(canonicalSearch, { replace: true });
+    }
+  }, [canonicalSearch, setSearchParams]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -73,20 +160,32 @@ const ApplicationsPage = () => {
   }
 
   function clearFilters(): void {
-    setCompanyQuery("");
-    setDateApplied("");
-    updateStatusFilter("");
-  }
-
-  function updateStatusFilter(nextStatus: ApplicationStatus | ""): void {
     setSearchParams(
       (currentSearchParams) => {
         const nextSearchParams = new URLSearchParams(currentSearchParams);
 
-        if (nextStatus === "") {
-          nextSearchParams.delete("status");
+        nextSearchParams.delete("company");
+        nextSearchParams.delete("date");
+        nextSearchParams.delete("status");
+
+        return nextSearchParams;
+      },
+      { replace: true },
+    );
+  }
+
+  function updateSearchParam(
+    name: keyof ApplicationListSearchParams,
+    value: string,
+  ): void {
+    setSearchParams(
+      (currentSearchParams) => {
+        const nextSearchParams = new URLSearchParams(currentSearchParams);
+
+        if (value === "" || (name === "sort" && value === "newest")) {
+          nextSearchParams.delete(name);
         } else {
-          nextSearchParams.set("status", nextStatus);
+          nextSearchParams.set(name, value);
         }
 
         return nextSearchParams;
@@ -96,18 +195,22 @@ const ApplicationsPage = () => {
   }
 
   const normalizedCompanyQuery = companyQuery.trim().toLowerCase();
-  const filteredApplications =
+  const visibleApplications =
     state.status === "success"
-      ? state.applications.filter((application) => {
-          const matchesCompany = application.company.name
-            .toLowerCase()
-            .includes(normalizedCompanyQuery);
-          const matchesDate =
-            dateApplied === "" || application.dateApplied === dateApplied;
-          const matchesStatus = status === "" || application.status === status;
+      ? sortApplications(
+          state.applications.filter((application) => {
+            const matchesCompany = application.company.name
+              .toLowerCase()
+              .includes(normalizedCompanyQuery);
+            const matchesDate =
+              dateApplied === "" || application.dateApplied === dateApplied;
+            const matchesStatus =
+              status === "" || application.status === status;
 
-          return matchesCompany && matchesDate && matchesStatus;
-        })
+            return matchesCompany && matchesDate && matchesStatus;
+          }),
+          sort,
+        )
       : [];
 
   return (
@@ -148,16 +251,21 @@ const ApplicationsPage = () => {
           companyQuery={companyQuery}
           dateApplied={dateApplied}
           onClear={clearFilters}
-          onCompanyQueryChange={setCompanyQuery}
-          onDateAppliedChange={setDateApplied}
-          onStatusChange={updateStatusFilter}
+          onCompanyQueryChange={(value) =>
+            updateSearchParam("company", value)
+          }
+          onDateAppliedChange={(value) => updateSearchParam("date", value)}
+          onSortChange={(value) => updateSearchParam("sort", value)}
+          onStatusChange={(value) => updateSearchParam("status", value)}
+          resultCount={visibleApplications.length}
+          sort={sort}
           status={status}
         />
       )}
 
       {state.status === "success" &&
         state.applications.length > 0 &&
-        filteredApplications.length === 0 && (
+        visibleApplications.length === 0 && (
           <StatePanel
             action={
               <button
@@ -175,9 +283,12 @@ const ApplicationsPage = () => {
         )}
 
       {state.status === "success" &&
-        filteredApplications.map((application) => (
-          <ApplicationCard key={application.id} application={application} />
-        ))}
+        visibleApplications.length > 0 && (
+          <ApplicationList
+            applications={visibleApplications}
+            returnSearch={location.search}
+          />
+        )}
     </section>
   );
 };

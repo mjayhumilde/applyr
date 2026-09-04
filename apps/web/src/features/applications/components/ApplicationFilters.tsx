@@ -3,18 +3,29 @@ import {
   type ApplicationStatus,
 } from "@applyr/contracts";
 
+import { actionClassNames } from "../../../shared/styles/actionStyles";
+import {
+  applicationListSortSchema,
+  type ApplicationListSort,
+} from "../schemas/applicationListSearchParams";
+
 interface ApplicationFiltersProps {
   companyQuery: string;
   dateApplied: string;
   onClear: () => void;
   onCompanyQueryChange: (value: string) => void;
   onDateAppliedChange: (value: string) => void;
+  onSortChange: (value: ApplicationListSort) => void;
   onStatusChange: (value: ApplicationStatus | "") => void;
+  resultCount: number;
+  sort: ApplicationListSort;
   status: ApplicationStatus | "";
 }
 
 const inputClassName =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none";
+  "mt-1 min-h-11 w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-control focus:border-action";
+
+const countFormatter = new Intl.NumberFormat();
 
 export function ApplicationFilters({
   companyQuery,
@@ -22,7 +33,10 @@ export function ApplicationFilters({
   onClear,
   onCompanyQueryChange,
   onDateAppliedChange,
+  onSortChange,
   onStatusChange,
+  resultCount,
+  sort,
   status,
 }: ApplicationFiltersProps) {
   const hasActiveFilters =
@@ -41,15 +55,34 @@ export function ApplicationFilters({
     }
   }
 
+  function changeSort(value: string): void {
+    const sortResult = applicationListSortSchema.safeParse(value);
+
+    if (sortResult.success) {
+      onSortChange(sortResult.data);
+    }
+  }
+
   return (
     <section
       aria-label="Application filters"
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+      className="rounded-panel border border-border bg-surface p-3 shadow-panel sm:p-4"
     >
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-bold text-ink">Filter and sort</h2>
+        <p
+          aria-live="polite"
+          className="font-data text-sm font-semibold text-muted tabular-nums"
+        >
+          {countFormatter.format(resultCount)} {" "}
+          {resultCount === 1 ? "application" : "applications"}
+        </p>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,2fr)_repeat(3,minmax(8rem,1fr))_auto] lg:items-end">
+        <div className="sm:col-span-2 lg:col-span-1">
           <label
-            className="text-sm font-medium text-gray-800"
+            className="text-sm font-medium text-ink"
             htmlFor="companyFilter"
           >
             Company
@@ -57,6 +90,7 @@ export function ApplicationFilters({
           <input
             className={inputClassName}
             id="companyFilter"
+            maxLength={255}
             onChange={(event) => onCompanyQueryChange(event.target.value)}
             placeholder="Search companies"
             type="search"
@@ -66,7 +100,7 @@ export function ApplicationFilters({
 
         <div>
           <label
-            className="text-sm font-medium text-gray-800"
+            className="text-sm font-medium text-ink"
             htmlFor="statusFilter"
           >
             Status
@@ -88,7 +122,7 @@ export function ApplicationFilters({
 
         <div>
           <label
-            className="text-sm font-medium text-gray-800"
+            className="text-sm font-medium text-ink"
             htmlFor="dateAppliedFilter"
           >
             Date applied
@@ -101,16 +135,35 @@ export function ApplicationFilters({
             value={dateApplied}
           />
         </div>
-      </div>
 
-      <button
-        className="mt-4 text-sm font-medium text-blue-700 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
-        disabled={!hasActiveFilters}
-        onClick={onClear}
-        type="button"
-      >
-        Clear filters
-      </button>
+        <div>
+          <label
+            className="text-sm font-medium text-ink"
+            htmlFor="sortApplications"
+          >
+            Sort
+          </label>
+          <select
+            className={inputClassName}
+            id="sortApplications"
+            onChange={(event) => changeSort(event.target.value)}
+            value={sort}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="status">Status</option>
+          </select>
+        </div>
+
+        <button
+          className={`${actionClassNames.secondary} w-full sm:w-auto`}
+          disabled={!hasActiveFilters}
+          onClick={onClear}
+          type="button"
+        >
+          Clear filters
+        </button>
+      </div>
     </section>
   );
 }
