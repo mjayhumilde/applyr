@@ -2,6 +2,7 @@ import type { Application, ApplicationEvent } from "@applyr/contracts";
 import { Link } from "react-router";
 
 import { StatusBadge } from "../../../shared/components/StatusBadge";
+import { formatApplicationDate } from "../utils/formatApplicationDate";
 
 interface ApplicationListItemProps {
   application: Application;
@@ -15,17 +16,6 @@ interface RelevantEvent {
 
 export const applicationLedgerColumnsClassName =
   "md:grid-cols-[minmax(0,2fr)_minmax(6.5rem,0.75fr)_minmax(0,1.25fr)_minmax(7.5rem,0.8fr)_auto]";
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-  year: "numeric",
-});
-
-function formatDate(value: string): string {
-  return dateFormatter.format(new Date(`${value}T00:00:00Z`));
-}
 
 function getTodayIsoDate(): string {
   const today = new Date();
@@ -126,7 +116,7 @@ export function ApplicationListItem({
                 className="mt-0.5 block text-xs text-muted"
                 dateTime={relevantEvent.event.eventDate}
               >
-                {formatDate(relevantEvent.event.eventDate)}
+                {formatApplicationDate(relevantEvent.event.eventDate)}
               </time>
             </>
           )}
@@ -140,7 +130,7 @@ export function ApplicationListItem({
             className="mt-1 block text-sm font-semibold text-ink md:mt-0"
             dateTime={application.dateApplied}
           >
-            {formatDate(application.dateApplied)}
+            {formatApplicationDate(application.dateApplied)}
           </time>
 
           {application.jobPostLink && (
