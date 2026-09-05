@@ -29,7 +29,6 @@ type ApplicationFormFieldErrors = Partial<
 >;
 
 interface ValidationIssue {
-  message: string;
   path: readonly PropertyKey[];
 }
 
@@ -44,9 +43,21 @@ const fieldNameByIssuePath: Partial<Record<string, ApplicationFormFieldName>> =
     notes: "notes",
   };
 
+const fieldErrorMessages = {
+  companyName: "Enter a company name between 1 and 255 characters.",
+  companyWebsite:
+    "Enter a website starting with https:// or http://, or leave it blank.",
+  role: "Enter a role between 1 and 255 characters.",
+  jobPostLink:
+    "Enter a job link starting with https:// or http://, or leave it blank.",
+  status: "Choose an application status from the list.",
+  dateApplied: "Choose a valid application date.",
+  notes: "Enter your notes as text, or leave this field blank.",
+} satisfies Record<ApplicationFormFieldName, string>;
+
 const inputClassName =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none";
-const fieldErrorClassName = "mt-1 text-sm text-danger";
+  "mt-1 min-h-11 min-w-0 w-full rounded-control border border-control bg-surface px-3 py-2 text-ink placeholder:text-muted focus:border-action";
+const fieldErrorClassName = "mt-1 wrap-break-word text-sm text-danger";
 
 function getFieldErrors(
   issues: readonly ValidationIssue[],
@@ -58,7 +69,7 @@ function getFieldErrors(
     const fieldName = fieldNameByIssuePath[issuePath];
 
     if (fieldName !== undefined && fieldErrors[fieldName] === undefined) {
-      fieldErrors[fieldName] = issue.message;
+      fieldErrors[fieldName] = fieldErrorMessages[fieldName];
     }
   }
 
@@ -136,7 +147,10 @@ export function ApplicationForm({
       const nextFieldErrors = getFieldErrors(validationResult.error.issues);
 
       setFieldErrors(nextFieldErrors);
-      focusFirstInvalidField(form, nextFieldErrors);
+      // Wait for the error text and aria-describedby to reach the DOM.
+      requestAnimationFrame(() => {
+        focusFirstInvalidField(form, nextFieldErrors);
+      });
       return;
     }
 
@@ -145,7 +159,9 @@ export function ApplicationForm({
       await onSubmit(validationResult.data);
     } catch (error: unknown) {
       setSubmitErrorMessage(
-        error instanceof Error ? error.message : "Unable to save application",
+        error instanceof Error
+          ? error.message
+          : "Unable to save the application.",
       );
     } finally {
       setIsSubmitting(false);
@@ -154,33 +170,43 @@ export function ApplicationForm({
 
   return (
     <form
-      className="mt-6 space-y-5 rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+      aria-busy={isSubmitting}
+      className="mt-6 min-w-0 space-y-5 rounded-panel border border-border bg-surface p-4 shadow-panel sm:p-6"
       noValidate
       onSubmit={handleSubmit}
     >
       {submitErrorMessage !== null && (
         <p
-          className="rounded-md bg-red-50 p-3 text-sm text-red-700"
+          className="wrap-break-word rounded-control border border-danger/20 bg-danger/5 p-3 text-sm text-danger"
           role="alert"
         >
           {submitErrorMessage}
+          <span className="mt-1 block">
+            Your input is still here. Check your applications in a new tab
+            before trying again.
+          </span>
         </p>
       )}
 
-      <fieldset className="space-y-4 border-b border-border pb-5">
+      <fieldset className="min-w-0 space-y-4 border-b border-border pb-5">
         <legend className="font-display text-lg font-bold text-ink">
           Company
         </legend>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
+          <div className="min-w-0">
             <label
-              className="text-sm font-medium text-gray-800"
+              className="text-sm font-medium text-ink"
               htmlFor="companyName"
             >
               Company name
             </label>
             <input
+              aria-describedby={
+                fieldErrors.companyName ? "companyName-error" : undefined
+              }
+              aria-invalid={fieldErrors.companyName !== undefined}
+              autoComplete="organization"
               className={inputClassName}
               defaultValue={initialValues?.company.name ?? ""}
               id="companyName"
@@ -190,27 +216,36 @@ export function ApplicationForm({
               type="text"
             />
             {fieldErrors.companyName !== undefined && (
-              <p className={fieldErrorClassName}>{fieldErrors.companyName}</p>
+              <p className={fieldErrorClassName} id="companyName-error">
+                {fieldErrors.companyName}
+              </p>
             )}
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label
-              className="text-sm font-medium text-gray-800"
+              className="text-sm font-medium text-ink"
               htmlFor="companyWebsite"
             >
-              Company website <span className="text-gray-500">(optional)</span>
+              Company website <span className="text-muted">(optional)</span>
             </label>
             <input
+              aria-describedby={
+                fieldErrors.companyWebsite ? "companyWebsite-error" : undefined
+              }
+              aria-invalid={fieldErrors.companyWebsite !== undefined}
+              autoCapitalize="none"
+              autoComplete="url"
               className={inputClassName}
               defaultValue={initialValues?.company.website ?? ""}
               id="companyWebsite"
               name="companyWebsite"
               placeholder="https://example.com"
+              spellCheck={false}
               type="url"
             />
             {fieldErrors.companyWebsite !== undefined && (
-              <p className={fieldErrorClassName}>
+              <p className={fieldErrorClassName} id="companyWebsite-error">
                 {fieldErrors.companyWebsite}
               </p>
             )}
@@ -218,17 +253,20 @@ export function ApplicationForm({
         </div>
       </fieldset>
 
-      <fieldset className="space-y-4 border-b border-border pb-5">
+      <fieldset className="min-w-0 space-y-4 border-b border-border pb-5">
         <legend className="font-display text-lg font-bold text-ink">
           Position
         </legend>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="text-sm font-medium text-gray-800" htmlFor="role">
+          <div className="min-w-0">
+            <label className="text-sm font-medium text-ink" htmlFor="role">
               Role
             </label>
             <input
+              aria-describedby={fieldErrors.role ? "role-error" : undefined}
+              aria-invalid={fieldErrors.role !== undefined}
+              autoComplete="off"
               className={inputClassName}
               defaultValue={initialValues?.role ?? ""}
               id="role"
@@ -238,46 +276,61 @@ export function ApplicationForm({
               type="text"
             />
             {fieldErrors.role !== undefined && (
-              <p className={fieldErrorClassName}>{fieldErrors.role}</p>
+              <p className={fieldErrorClassName} id="role-error">
+                {fieldErrors.role}
+              </p>
             )}
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label
-              className="text-sm font-medium text-gray-800"
+              className="text-sm font-medium text-ink"
               htmlFor="jobPostLink"
             >
-              Job post link <span className="text-gray-500">(optional)</span>
+              Job post link <span className="text-muted">(optional)</span>
             </label>
             <input
+              aria-describedby={
+                fieldErrors.jobPostLink ? "jobPostLink-error" : undefined
+              }
+              aria-invalid={fieldErrors.jobPostLink !== undefined}
+              autoCapitalize="none"
+              autoComplete="off"
               className={inputClassName}
               defaultValue={initialValues?.jobPostLink ?? ""}
               id="jobPostLink"
               name="jobPostLink"
               placeholder="https://example.com/jobs/123"
+              spellCheck={false}
               type="url"
             />
             {fieldErrors.jobPostLink !== undefined && (
-              <p className={fieldErrorClassName}>{fieldErrors.jobPostLink}</p>
+              <p className={fieldErrorClassName} id="jobPostLink-error">
+                {fieldErrors.jobPostLink}
+              </p>
             )}
           </div>
         </div>
       </fieldset>
 
-      <fieldset className="space-y-4 border-b border-border pb-5">
+      <fieldset className="min-w-0 space-y-4 border-b border-border pb-5">
         <legend className="font-display text-lg font-bold text-ink">
           Tracking
         </legend>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
+          <div className="min-w-0">
             <label
-              className="text-sm font-medium text-gray-800"
+              className="text-sm font-medium text-ink"
               htmlFor="status"
             >
               Status
             </label>
             <select
+              aria-describedby={
+                fieldErrors.status ? "status-error" : undefined
+              }
+              aria-invalid={fieldErrors.status !== undefined}
               className={inputClassName}
               defaultValue={initialValues?.status ?? "Applied"}
               id="status"
@@ -290,18 +343,24 @@ export function ApplicationForm({
               ))}
             </select>
             {fieldErrors.status !== undefined && (
-              <p className={fieldErrorClassName}>{fieldErrors.status}</p>
+              <p className={fieldErrorClassName} id="status-error">
+                {fieldErrors.status}
+              </p>
             )}
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label
-              className="text-sm font-medium text-gray-800"
+              className="text-sm font-medium text-ink"
               htmlFor="dateApplied"
             >
               Date applied
             </label>
             <input
+              aria-describedby={
+                fieldErrors.dateApplied ? "dateApplied-error" : undefined
+              }
+              aria-invalid={fieldErrors.dateApplied !== undefined}
               className={inputClassName}
               defaultValue={initialValues?.dateApplied ?? ""}
               id="dateApplied"
@@ -310,22 +369,26 @@ export function ApplicationForm({
               type="date"
             />
             {fieldErrors.dateApplied !== undefined && (
-              <p className={fieldErrorClassName}>{fieldErrors.dateApplied}</p>
+              <p className={fieldErrorClassName} id="dateApplied-error">
+                {fieldErrors.dateApplied}
+              </p>
             )}
           </div>
         </div>
       </fieldset>
 
-      <fieldset className="space-y-4">
+      <fieldset className="min-w-0 space-y-4">
         <legend className="font-display text-lg font-bold text-ink">
           Notes
         </legend>
 
-        <div>
-          <label className="text-sm font-medium text-gray-800" htmlFor="notes">
-            Notes <span className="text-gray-500">(optional)</span>
+        <div className="min-w-0">
+          <label className="text-sm font-medium text-ink" htmlFor="notes">
+            Notes <span className="text-muted">(optional)</span>
           </label>
           <textarea
+            aria-describedby={fieldErrors.notes ? "notes-error" : undefined}
+            aria-invalid={fieldErrors.notes !== undefined}
             className={inputClassName}
             defaultValue={initialValues?.notes ?? ""}
             id="notes"
@@ -333,12 +396,14 @@ export function ApplicationForm({
             rows={4}
           />
           {fieldErrors.notes !== undefined && (
-            <p className={fieldErrorClassName}>{fieldErrors.notes}</p>
+            <p className={fieldErrorClassName} id="notes-error">
+              {fieldErrors.notes}
+            </p>
           )}
         </div>
       </fieldset>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
         <button
           className={actionClassNames.primary}
           disabled={isSubmitting}

@@ -23,7 +23,7 @@ interface ApplicationFiltersProps {
 }
 
 const inputClassName =
-  "mt-1 min-h-11 w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-control focus:border-action";
+  "mt-1 min-h-11 min-w-0 w-full rounded-control border border-control bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-action";
 
 const countFormatter = new Intl.NumberFormat();
 
@@ -74,7 +74,7 @@ export function ApplicationFilters({
           aria-live="polite"
           className="font-data text-sm font-semibold text-muted tabular-nums"
         >
-          {countFormatter.format(resultCount)} {" "}
+          {countFormatter.format(resultCount)}{" "}
           {resultCount === 1 ? "application" : "applications"}
         </p>
       </div>
@@ -88,9 +88,11 @@ export function ApplicationFilters({
             Company
           </label>
           <input
+            autoComplete="off"
             className={inputClassName}
             id="companyFilter"
             maxLength={255}
+            name="company"
             onChange={(event) => onCompanyQueryChange(event.target.value)}
             placeholder="Search companies"
             type="search"
@@ -108,6 +110,7 @@ export function ApplicationFilters({
           <select
             className={inputClassName}
             id="statusFilter"
+            name="status"
             onChange={(event) => changeStatus(event.target.value)}
             value={status}
           >
@@ -130,6 +133,7 @@ export function ApplicationFilters({
           <input
             className={inputClassName}
             id="dateAppliedFilter"
+            name="dateApplied"
             onChange={(event) => onDateAppliedChange(event.target.value)}
             type="date"
             value={dateApplied}
@@ -146,6 +150,7 @@ export function ApplicationFilters({
           <select
             className={inputClassName}
             id="sortApplications"
+            name="sort"
             onChange={(event) => changeSort(event.target.value)}
             value={sort}
           >

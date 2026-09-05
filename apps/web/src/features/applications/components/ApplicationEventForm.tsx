@@ -31,7 +31,7 @@ interface EventFormError {
 
 const defaultEventPreset: EventPreset = "Interview";
 const inputClassName =
-  "mt-1 min-h-11 min-w-0 w-full rounded-control border border-control bg-surface px-3 py-2 text-sm text-ink placeholder:text-control focus:border-action disabled:opacity-60";
+  "mt-1 min-h-11 min-w-0 w-full rounded-control border border-control bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-action disabled:opacity-60";
 
 function getTextValue(formData: FormData, fieldName: string): string {
   const value = formData.get(fieldName);
@@ -56,11 +56,14 @@ export function ApplicationEventForm({
   ): void {
     setFormError({ field, message });
 
-    const control = form.elements.namedItem(field);
+    // Focus after React renders the error used by aria-describedby.
+    requestAnimationFrame(() => {
+      const control = form.elements.namedItem(field);
 
-    if (control instanceof HTMLElement) {
-      control.focus();
-    }
+      if (control instanceof HTMLElement) {
+        control.focus();
+      }
+    });
   }
 
   async function handleSubmit(
@@ -138,7 +141,7 @@ export function ApplicationEventForm({
         message:
           error instanceof Error
             ? error.message
-            : "Unable to log the event. Please try again.",
+            : "Unable to log the event.",
       });
     } finally {
       setIsSubmitting(false);
@@ -170,6 +173,12 @@ export function ApplicationEventForm({
           role="alert"
         >
           {formError.message}
+          {formError.field === null && (
+            <span className="mt-1 block">
+              Your input is still here. Check this application in a new tab
+              before logging the event again.
+            </span>
+          )}
         </p>
       )}
 
@@ -251,6 +260,7 @@ export function ApplicationEventForm({
                     : undefined
                 }
                 aria-invalid={formError?.field === "customEventType"}
+                autoComplete="off"
                 className={inputClassName}
                 id="customEventType"
                 maxLength={255}
