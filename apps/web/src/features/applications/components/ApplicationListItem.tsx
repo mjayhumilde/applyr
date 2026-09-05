@@ -61,13 +61,13 @@ export function ApplicationListItem({
         className={`grid min-w-0 gap-4 rounded-panel border border-border bg-surface p-4 shadow-panel md:items-center md:rounded-none md:border-0 md:bg-transparent md:shadow-none ${applicationLedgerColumnsClassName}`}
       >
         <div className="min-w-0">
-          <h2 className="break-words text-lg font-bold text-ink">
+          <h2 className="wrap-break-word text-lg font-bold text-ink">
             {application.role}
           </h2>
 
           {application.company.website ? (
             <a
-              className="mt-0.5 block break-words text-sm font-semibold text-action hover:text-action-hover hover:underline"
+              className="mt-0.5 block wrap-break-word text-sm font-semibold text-action hover:text-action-hover hover:underline"
               href={application.company.website}
               rel="noopener noreferrer"
               target="_blank"
@@ -75,13 +75,13 @@ export function ApplicationListItem({
               {application.company.name}
             </a>
           ) : (
-            <p className="mt-0.5 break-words text-sm font-semibold text-muted">
+            <p className="mt-0.5 wrap-break-word text-sm font-semibold text-muted">
               {application.company.name}
             </p>
           )}
 
           {application.notes && (
-            <p className="mt-2 line-clamp-2 break-words text-sm text-muted">
+            <p className="mt-2 line-clamp-2 wrap-break-word text-sm text-muted">
               {application.notes}
             </p>
           )}
@@ -109,7 +109,7 @@ export function ApplicationListItem({
               <p className="font-data text-xs font-semibold tracking-[0.08em] text-muted uppercase">
                 {relevantEvent.label}
               </p>
-              <p className="mt-1 line-clamp-2 break-words text-sm font-semibold text-ink">
+              <p className="mt-1 line-clamp-2 wrap-break-word text-sm font-semibold text-ink">
                 {relevantEvent.event.eventType}
               </p>
               <time

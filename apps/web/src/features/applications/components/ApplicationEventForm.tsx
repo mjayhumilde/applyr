@@ -165,7 +165,7 @@ export function ApplicationEventForm({
 
       {formError !== null && (
         <p
-          className="mt-3 break-words rounded-control border border-danger/20 bg-danger/5 p-3 text-sm text-danger"
+          className="mt-3 wrap-break-word rounded-control border border-danger/20 bg-danger/5 p-3 text-sm text-danger"
           id="event-form-error"
           role="alert"
         >
@@ -274,7 +274,7 @@ export function ApplicationEventForm({
         </button>
         <p
           aria-atomic="true"
-          className="min-w-0 break-words text-sm font-semibold text-success"
+          className="min-w-0 wrap-break-word text-sm font-semibold text-success"
           role="status"
         >
           {successMessage}
