@@ -132,7 +132,7 @@ const ApplicationsPage = () => {
         if (!controller.signal.aborted) {
           setState({ status: "success", applications });
         }
-      } catch (error: unknown) {
+      } catch {
         if (controller.signal.aborted) {
           return;
         }
@@ -140,9 +140,7 @@ const ApplicationsPage = () => {
         setState({
           status: "error",
           message:
-            error instanceof Error
-              ? error.message
-              : "Unable to load applications",
+            "Select Retry to load your applications again. If the problem continues, try again later.",
         });
       }
     }

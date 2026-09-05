@@ -5,7 +5,7 @@ import { useDocumentTitle } from "../shared/hooks/useDocumentTitle";
 import { actionClassNames } from "../shared/styles/actionStyles";
 
 const NotFoundPage = () => {
-  useDocumentTitle("Page Not Found");
+  useDocumentTitle("Page not found");
 
   return (
     <section className="mx-auto max-w-xl">
@@ -20,7 +20,7 @@ const NotFoundPage = () => {
             </Link>
           </>
         }
-        description="The page you requested does not exist."
+        description="This page does not exist. Check the address, return to the overview, or view your applications."
         title="Page not found"
       />
     </section>

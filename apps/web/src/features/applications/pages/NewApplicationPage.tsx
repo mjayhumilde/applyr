@@ -9,7 +9,7 @@ import { ApplicationForm } from "../components/ApplicationForm";
 const NewApplicationPage = () => {
   const navigate = useNavigate();
 
-  useDocumentTitle("Add Application");
+  useDocumentTitle("Add application");
 
   async function saveApplication(
     input: CreateApplicationRequest,

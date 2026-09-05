@@ -58,7 +58,7 @@ const ApplicationDetailsPage = () => {
   });
   const [requestVersion, setRequestVersion] = useState(0);
 
-  useDocumentTitle("Application Details");
+  useDocumentTitle("Application details");
 
   useEffect(() => {
     if (parsedApplicationId === null) {
@@ -96,9 +96,7 @@ const ApplicationDetailsPage = () => {
           status: "error",
           applicationId: validApplicationId,
           message:
-            error instanceof Error
-              ? `${error.message}. Check your connection and try again.`
-              : "Unable to load application. Check your connection and try again.",
+            "Select Retry to load this application again. If the problem continues, try again later.",
         });
       }
     }
@@ -184,8 +182,8 @@ const ApplicationDetailsPage = () => {
 
       {parsedApplicationId === null && (
         <StatePanel
-          message="The application address must contain a valid positive ID."
-          title="Invalid application ID"
+          message="This application link is invalid. Use Back to applications to choose a record from your list."
+          title="Invalid application link"
           variant="error"
         />
       )}

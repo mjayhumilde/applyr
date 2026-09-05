@@ -35,7 +35,7 @@ export function DeleteApplicationButton({
       onDeleted();
     } catch (error: unknown) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to delete application",
+        error instanceof Error ? error.message : "Unable to delete application.",
       );
     } finally {
       setIsDeleting(false);
@@ -43,7 +43,7 @@ export function DeleteApplicationButton({
   }
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 sm:max-w-xs">
       <button
         className={`${actionClassNames.danger} w-full sm:w-auto`}
         disabled={isDeleting}
@@ -54,9 +54,13 @@ export function DeleteApplicationButton({
       </button>
 
       {errorMessage !== null && (
-        <p className="mt-2 text-sm text-danger wrap-anywhere" role="alert">
-          {errorMessage}
-        </p>
+        <div className="mt-2 text-sm text-danger wrap-anywhere" role="alert">
+          <p>{errorMessage}</p>
+          <p>
+            Refresh this page to check whether the application was deleted
+            before trying again.
+          </p>
+        </div>
       )}
     </div>
   );

@@ -29,16 +29,20 @@ export function PageHeader({
         </Link>
       )}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="font-display text-3xl font-bold text-ink">{title}</h1>
+          <h1 className="font-display text-3xl font-bold text-ink wrap-anywhere">
+            {title}
+          </h1>
           {description && (
-            <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>
+            <p className="mt-1 max-w-2xl text-sm text-muted wrap-anywhere">
+              {description}
+            </p>
           )}
         </div>
 
         {actions && (
-          <div className="grid w-full min-w-0 gap-3 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap sm:items-center">
+          <div className="grid w-full min-w-0 gap-3 sm:flex sm:w-auto sm:max-w-full sm:shrink-0 sm:flex-wrap sm:items-start">
             {actions}
           </div>
         )}

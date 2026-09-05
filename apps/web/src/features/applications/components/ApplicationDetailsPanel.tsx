@@ -19,7 +19,7 @@ export function ApplicationDetailsPanel({
       className="min-w-0 rounded-panel border border-border bg-surface p-5 shadow-panel sm:p-6"
     >
       <header className="border-b border-border pb-5">
-        <p className="font-data text-xs font-semibold tracking-[0.08em] text-muted uppercase">
+        <p className="font-data text-xs font-semibold text-muted">
           Application record
         </p>
         <h2
@@ -49,15 +49,13 @@ export function ApplicationDetailsPanel({
 
       <dl className="grid min-w-0 gap-x-6 gap-y-5 py-5 sm:grid-cols-2">
         <div className="min-w-0">
-          <dt className="font-data text-xs font-semibold tracking-[0.08em] text-muted uppercase">
-            Status
-          </dt>
+          <dt className="font-data text-xs font-semibold text-muted">Status</dt>
           <dd className="mt-2">
             <StatusBadge status={application.status} />
           </dd>
         </div>
         <div className="min-w-0">
-          <dt className="font-data text-xs font-semibold tracking-[0.08em] text-muted uppercase">
+          <dt className="font-data text-xs font-semibold text-muted">
             Applied
           </dt>
           <dd className="mt-2 text-sm font-semibold text-ink">
@@ -67,7 +65,7 @@ export function ApplicationDetailsPanel({
           </dd>
         </div>
         <div className="min-w-0 sm:col-span-2">
-          <dt className="font-data text-xs font-semibold tracking-[0.08em] text-muted uppercase">
+          <dt className="font-data text-xs font-semibold text-muted">
             Job posting
           </dt>
           <dd className="mt-2 text-sm">

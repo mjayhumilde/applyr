@@ -60,8 +60,8 @@ export function AppHeader() {
               <span className="font-display text-xl leading-none font-bold tracking-[-0.04em]">
                 Applyr
               </span>
-              <span className="mt-1 hidden font-data text-[0.625rem] leading-none font-semibold tracking-[0.16em] text-muted uppercase sm:block">
-                JOB APPLICATIONS TRACKER
+              <span className="mt-1 hidden font-data text-[0.625rem] leading-none font-semibold text-muted sm:block">
+                Job application tracker
               </span>
             </span>
           </Link>

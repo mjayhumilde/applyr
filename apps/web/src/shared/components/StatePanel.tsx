@@ -32,7 +32,7 @@ export function StatePanel(props: StatePanelProps) {
         className="rounded-panel border border-border bg-surface p-6 text-center shadow-panel"
         role="status"
       >
-        <p className="font-medium text-muted">{props.message}</p>
+        <p className="font-medium text-muted wrap-anywhere">{props.message}</p>
       </div>
     );
   }
@@ -49,16 +49,16 @@ export function StatePanel(props: StatePanelProps) {
     >
       <div role={isError ? "alert" : undefined}>
         <p
-          className={`font-data text-xs font-semibold tracking-[0.12em] uppercase ${
+          className={`font-data text-xs font-semibold ${
             isError ? "text-danger" : "text-muted"
           }`}
         >
           {isError ? "Needs attention" : "No records"}
         </p>
-        <h2 className="mt-2 text-xl font-bold text-ink">
+        <h2 className="mt-2 text-xl font-bold text-ink wrap-anywhere">
           {isError ? (props.title ?? "Something went wrong") : props.title}
         </h2>
-        <p className="mx-auto mt-1 max-w-xl text-sm text-muted">
+        <p className="mx-auto mt-1 max-w-xl text-sm text-muted wrap-anywhere">
           {props.message}
         </p>
       </div>
@@ -69,7 +69,7 @@ export function StatePanel(props: StatePanelProps) {
           onClick={props.retry.onClick}
           type="button"
         >
-          {props.retry.label ?? "Try again"}
+          {props.retry.label ?? "Retry"}
         </button>
       )}
 

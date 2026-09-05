@@ -73,6 +73,7 @@ export function ApplicationListItem({
               target="_blank"
             >
               {application.company.name}
+              <span className="sr-only"> (opens in a new tab)</span>
             </a>
           ) : (
             <p className="mt-0.5 wrap-break-word text-sm font-semibold text-muted">
@@ -88,7 +89,7 @@ export function ApplicationListItem({
         </div>
 
         <div className="min-w-0">
-          <p className="mb-1 font-data text-xs font-semibold tracking-[0.08em] text-muted uppercase md:sr-only">
+          <p className="mb-1 font-data text-xs font-semibold text-muted md:sr-only">
             Status
           </p>
           <StatusBadge status={application.status} />
@@ -97,7 +98,7 @@ export function ApplicationListItem({
         <div className="min-w-0">
           {relevantEvent === null ? (
             <>
-              <p className="font-data text-xs font-semibold tracking-[0.08em] text-muted uppercase md:sr-only">
+              <p className="font-data text-xs font-semibold text-muted md:sr-only">
                 Activity
               </p>
               <p className="mt-1 text-sm text-muted md:mt-0">
@@ -106,7 +107,7 @@ export function ApplicationListItem({
             </>
           ) : (
             <>
-              <p className="font-data text-xs font-semibold tracking-[0.08em] text-muted uppercase">
+              <p className="font-data text-xs font-semibold text-muted">
                 {relevantEvent.label}
               </p>
               <p className="mt-1 line-clamp-2 wrap-break-word text-sm font-semibold text-ink">
@@ -123,7 +124,7 @@ export function ApplicationListItem({
         </div>
 
         <div className="min-w-0">
-          <p className="font-data text-xs font-semibold tracking-[0.08em] text-muted uppercase md:sr-only">
+          <p className="font-data text-xs font-semibold text-muted md:sr-only">
             Applied
           </p>
           <time
@@ -141,6 +142,7 @@ export function ApplicationListItem({
               target="_blank"
             >
               Job post <span aria-hidden="true">{"\u2197"}</span>
+              <span className="sr-only"> (opens in a new tab)</span>
             </a>
           )}
         </div>

@@ -49,7 +49,7 @@ const EditApplicationPage = () => {
   });
   const [requestVersion, setRequestVersion] = useState(0);
 
-  useDocumentTitle("Edit Application");
+  useDocumentTitle("Edit application");
 
   useEffect(() => {
     if (parsedApplicationId === null) {
@@ -87,9 +87,7 @@ const EditApplicationPage = () => {
           status: "error",
           applicationId: validApplicationId,
           message:
-            error instanceof Error
-              ? `${error.message}. Check your connection and try again.`
-              : "Unable to load application. Check your connection and try again.",
+            "Select Retry to load this application again. If the problem continues, try again later.",
         });
       }
     }
@@ -110,7 +108,9 @@ const EditApplicationPage = () => {
     input: UpdateApplicationRequest,
   ): Promise<void> {
     if (parsedApplicationId === null) {
-      throw new Error("Invalid application ID");
+      throw new Error(
+        "This application link is invalid. Return to your applications and choose a record to edit.",
+      );
     }
 
     await updateApplication(parsedApplicationId, input);
@@ -124,7 +124,10 @@ const EditApplicationPage = () => {
     <section className="mx-auto max-w-2xl">
       <PageHeader
         backLink={{
-          label: "Back to application",
+          label:
+            parsedApplicationId === null
+              ? "Back to applications"
+              : "Back to application",
           to:
             parsedApplicationId === null
               ? `/applications${location.search}`
@@ -137,8 +140,8 @@ const EditApplicationPage = () => {
       {parsedApplicationId === null && (
         <div className="mt-6">
           <StatePanel
-            message="The application address must contain a valid positive ID."
-            title="Invalid application ID"
+            message="This application link is invalid. Use Back to applications to choose a record from your list."
+            title="Invalid application link"
             variant="error"
           />
         </div>

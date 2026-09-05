@@ -28,7 +28,7 @@ const Dashboard = () => {
         if (!controller.signal.aborted) {
           setState({ status: "success", summary });
         }
-      } catch (error: unknown) {
+      } catch {
         if (controller.signal.aborted) {
           return;
         }
@@ -36,7 +36,7 @@ const Dashboard = () => {
         setState({
           status: "error",
           message:
-            error instanceof Error ? error.message : "Unable to load dashboard",
+            "Select Retry to load the overview again. If the problem continues, try again later.",
         });
       }
     }
@@ -56,12 +56,12 @@ const Dashboard = () => {
   return (
     <section className="flex flex-col gap-6">
       <PageHeader
-        description="A quick view of your application pipeline."
+        description="A quick view of your job search progress."
         title="Overview"
       />
 
       {state.status === "loading" && (
-        <StatePanel message="Loading dashboard…" variant="loading" />
+        <StatePanel message="Loading overview…" variant="loading" />
       )}
 
       {state.status === "error" && (

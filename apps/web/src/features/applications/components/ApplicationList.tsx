@@ -19,7 +19,7 @@ export function ApplicationList({
       <div className="md:overflow-hidden md:rounded-panel md:border md:border-border md:bg-surface md:shadow-panel">
         <div
           aria-hidden="true"
-          className={`hidden gap-4 border-b border-border bg-canvas/70 px-4 py-2 font-data text-xs font-semibold tracking-widest text-muted uppercase md:grid ${applicationLedgerColumnsClassName}`}
+          className={`hidden gap-4 border-b border-border bg-canvas/70 px-4 py-2 font-data text-xs font-semibold text-muted md:grid ${applicationLedgerColumnsClassName}`}
         >
           <span>Position</span>
           <span>Status</span>
