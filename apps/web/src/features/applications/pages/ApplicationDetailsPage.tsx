@@ -6,18 +6,21 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 
+import { ApiError } from "../../../shared/api/ApiError";
 import { PageHeader } from "../../../shared/components/PageHeader";
 import { StatePanel } from "../../../shared/components/StatePanel";
 import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
 import { actionClassNames } from "../../../shared/styles/actionStyles";
 import { getApplication } from "../api/applications.api";
-import { ApplicationCard } from "../components/ApplicationCard";
+import { ApplicationDetailsPanel } from "../components/ApplicationDetailsPanel";
 import { ApplicationEventForm } from "../components/ApplicationEventForm";
+import { ApplicationTimeline } from "../components/ApplicationTimeline";
 import { DeleteApplicationButton } from "../components/DeleteApplicationButton";
 
 type ApplicationDetailsState =
   | { status: "loading" }
   | { status: "success"; applicationId: number; application: Application }
+  | { status: "not-found"; applicationId: number }
   | { status: "error"; applicationId: number; message: string };
 
 function getSaveSuccessMessage(locationState: unknown): string | null {
@@ -53,6 +56,7 @@ const ApplicationDetailsPage = () => {
   const [state, setState] = useState<ApplicationDetailsState>({
     status: "loading",
   });
+  const [requestVersion, setRequestVersion] = useState(0);
 
   useDocumentTitle("Application Details");
 
@@ -83,13 +87,18 @@ const ApplicationDetailsPage = () => {
           return;
         }
 
+        if (error instanceof ApiError && error.status === 404) {
+          setState({ status: "not-found", applicationId: validApplicationId });
+          return;
+        }
+
         setState({
           status: "error",
           applicationId: validApplicationId,
           message:
             error instanceof Error
-              ? error.message
-              : "Unable to load application",
+              ? `${error.message}. Check your connection and try again.`
+              : "Unable to load application. Check your connection and try again.",
         });
       }
     }
@@ -99,7 +108,12 @@ const ApplicationDetailsPage = () => {
     return () => {
       controller.abort();
     };
-  }, [parsedApplicationId]);
+  }, [parsedApplicationId, requestVersion]);
+
+  function retryLoadingApplication(): void {
+    setState({ status: "loading" });
+    setRequestVersion((currentVersion) => currentVersion + 1);
+  }
 
   function addEventToTimeline(
     applicationId: number,
@@ -183,10 +197,29 @@ const ApplicationDetailsPage = () => {
         )}
 
       {parsedApplicationId !== null &&
+        state.status === "not-found" &&
+        state.applicationId === parsedApplicationId && (
+          <StatePanel
+            action={
+              <Link
+                className={actionClassNames.secondary}
+                to={applicationsListUrl}
+              >
+                Back to applications
+              </Link>
+            }
+            message="This application may have been deleted, or the link is incorrect. Return to your applications to choose another record."
+            title="Application not found"
+            variant="empty"
+          />
+        )}
+
+      {parsedApplicationId !== null &&
         state.status === "error" &&
         state.applicationId === parsedApplicationId && (
           <StatePanel
             message={state.message}
+            retry={{ onClick: retryLoadingApplication }}
             title="Unable to load application"
             variant="error"
           />
@@ -195,17 +228,17 @@ const ApplicationDetailsPage = () => {
       {parsedApplicationId !== null &&
         state.status === "success" &&
         state.applicationId === parsedApplicationId && (
-          <>
-            <ApplicationCard
-              application={state.application}
-              showDetailsLink={false}
-            />
-            <ApplicationEventForm
-              key={parsedApplicationId}
-              applicationId={parsedApplicationId}
-              onCreated={addEventToTimeline}
-            />
-          </>
+          <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+            <ApplicationDetailsPanel application={state.application} />
+            <div className="grid min-w-0 gap-4">
+              <ApplicationTimeline events={state.application.events} />
+              <ApplicationEventForm
+                key={parsedApplicationId}
+                applicationId={parsedApplicationId}
+                onCreated={addEventToTimeline}
+              />
+            </div>
+          </div>
         )}
     </section>
   );

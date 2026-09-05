@@ -4,17 +4,20 @@ import {
   type UpdateApplicationRequest,
 } from "@applyr/contracts";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 
+import { ApiError } from "../../../shared/api/ApiError";
 import { PageHeader } from "../../../shared/components/PageHeader";
 import { StatePanel } from "../../../shared/components/StatePanel";
 import { useDocumentTitle } from "../../../shared/hooks/useDocumentTitle";
+import { actionClassNames } from "../../../shared/styles/actionStyles";
 import { getApplication, updateApplication } from "../api/applications.api";
 import { ApplicationForm } from "../components/ApplicationForm";
 
 type EditApplicationState =
   | { status: "loading" }
   | { status: "success"; applicationId: number; application: Application }
+  | { status: "not-found"; applicationId: number }
   | { status: "error"; applicationId: number; message: string };
 
 function toApplicationFormValues(
@@ -44,6 +47,7 @@ const EditApplicationPage = () => {
   const [state, setState] = useState<EditApplicationState>({
     status: "loading",
   });
+  const [requestVersion, setRequestVersion] = useState(0);
 
   useDocumentTitle("Edit Application");
 
@@ -74,13 +78,18 @@ const EditApplicationPage = () => {
           return;
         }
 
+        if (error instanceof ApiError && error.status === 404) {
+          setState({ status: "not-found", applicationId: validApplicationId });
+          return;
+        }
+
         setState({
           status: "error",
           applicationId: validApplicationId,
           message:
             error instanceof Error
-              ? error.message
-              : "Unable to load application",
+              ? `${error.message}. Check your connection and try again.`
+              : "Unable to load application. Check your connection and try again.",
         });
       }
     }
@@ -90,7 +99,12 @@ const EditApplicationPage = () => {
     return () => {
       controller.abort();
     };
-  }, [parsedApplicationId]);
+  }, [parsedApplicationId, requestVersion]);
+
+  function retryLoadingApplication(): void {
+    setState({ status: "loading" });
+    setRequestVersion((currentVersion) => currentVersion + 1);
+  }
 
   async function saveApplication(
     input: UpdateApplicationRequest,
@@ -139,11 +153,32 @@ const EditApplicationPage = () => {
         )}
 
       {parsedApplicationId !== null &&
+        state.status === "not-found" &&
+        state.applicationId === parsedApplicationId && (
+          <div className="mt-6">
+            <StatePanel
+              action={
+                <Link
+                  className={actionClassNames.secondary}
+                  to={`/applications${location.search}`}
+                >
+                  Back to applications
+                </Link>
+              }
+              message="This application may have been deleted, or the link is incorrect. Return to your applications to choose another record."
+              title="Application not found"
+              variant="empty"
+            />
+          </div>
+        )}
+
+      {parsedApplicationId !== null &&
         state.status === "error" &&
         state.applicationId === parsedApplicationId && (
           <div className="mt-6">
             <StatePanel
               message={state.message}
+              retry={{ onClick: retryLoadingApplication }}
               title="Unable to load application"
               variant="error"
             />

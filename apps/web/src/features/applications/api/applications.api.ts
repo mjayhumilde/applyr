@@ -10,6 +10,8 @@ import {
   type UpdateApplicationRequest,
 } from "@applyr/contracts";
 
+import { ApiError } from "../../../shared/api/ApiError";
+
 export async function getApplications(
   signal?: AbortSignal,
 ): Promise<Application[]> {
@@ -58,10 +60,11 @@ export async function getApplication(
   if (!response.ok) {
     const errorResult = apiErrorResponseSchema.safeParse(responseBody);
 
-    throw new Error(
+    throw new ApiError(
       errorResult.success
         ? errorResult.data.error.message
         : `Unable to load application (HTTP ${response.status})`,
+      response.status,
     );
   }
 

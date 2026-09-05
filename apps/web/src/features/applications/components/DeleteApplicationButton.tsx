@@ -16,11 +16,15 @@ export function DeleteApplicationButton({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleDelete(): Promise<void> {
+    if (isDeleting) {
+      return;
+    }
+
     const shouldDelete = window.confirm(
       "Delete this application? This action cannot be undone.",
     );
 
-    if (!shouldDelete || isDeleting) {
+    if (!shouldDelete) {
       return;
     }
 
@@ -39,9 +43,9 @@ export function DeleteApplicationButton({
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <button
-        className={actionClassNames.danger}
+        className={`${actionClassNames.danger} w-full sm:w-auto`}
         disabled={isDeleting}
         onClick={() => void handleDelete()}
         type="button"
@@ -50,7 +54,7 @@ export function DeleteApplicationButton({
       </button>
 
       {errorMessage !== null && (
-        <p className="mt-2 text-sm text-red-700" role="alert">
+        <p className="mt-2 text-sm text-danger wrap-anywhere" role="alert">
           {errorMessage}
         </p>
       )}
