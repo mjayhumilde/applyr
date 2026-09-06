@@ -12,7 +12,9 @@
     "predev": "npm run build --workspace=@applyr/contracts",
     "dev": "node --env-file-if-exists=.env --watch --enable-source-maps --import=tsx src/server.ts",
     "predb:check": "npm run build",
-    "db:check": "node --env-file-if-exists=.env --enable-source-maps dist/db/check-connection.js"
+    "db:check": "node --env-file-if-exists=.env --enable-source-maps dist/db/check-connection.js",
+    "preauth:check": "npm run build",
+    "auth:check": "node --env-file-if-exists=.env --input-type=module -e \"await import('./dist/config/auth-env.js'); console.log('Authentication environment variables are valid')\""
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

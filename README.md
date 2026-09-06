@@ -113,6 +113,53 @@ Verify the connection:
 npm run db:check
 ```
 
+### Prepare local Google authentication
+
+Google sign-in is not connected to the app yet. This checkpoint prepares and
+validates its server-only configuration separately from the database settings,
+so the existing app and `db:check` do not require Google credentials yet.
+
+1. Create a project in the [Google Cloud Console](https://console.cloud.google.com/).
+2. In **Google Auth platform**, configure **Branding**, choose an **External**
+   audience, and add your testing accounts under **Audience > Test users**.
+3. Under **Data Access**, select only the basic sign-in scopes: `openid`,
+   `userinfo.email`, and `userinfo.profile`. Do not request Gmail or Drive access.
+4. Under **Clients**, create a **Web application** OAuth client. Add the exact
+   authorized redirect URI `http://localhost:3000/api/auth/callback/google`.
+5. Add the following to your existing `apps/server/.env`. Preserve its database
+   URL and replace the empty values with your real credentials:
+
+```dotenv
+BETTER_AUTH_URL=http://localhost:3000
+WEB_ORIGIN=http://localhost:5173
+BETTER_AUTH_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+Generate `BETTER_AUTH_SECRET` in your own terminal and copy the output into
+`.env`. It is a separate secret from the Google client secret:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+Check the configuration from the repository root:
+
+```bash
+npm run auth:check -w @applyr/server
+```
+
+This command builds the server and validates the settings with Zod. It does not
+contact Google, prove the credentials are genuine, or enable sign-in. Empty
+credentials, a secret shorter than 32 characters, and invalid origins fail the
+check. The auth module will import these validated settings in the next
+checkpoint. Never put secrets in `VITE_` variables, commit `.env`, or share its
+contents. Any old `API_MODE` setting is unused and can be removed from `.env`.
+
+See [Google's consent setup](https://developers.google.com/workspace/guides/configure-oauth-consent)
+and [Better Auth's Google guide](https://better-auth.com/docs/authentication/google).
+
 ## 5. Run Applyr
 
 Start the API in one terminal:
