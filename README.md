@@ -6,6 +6,7 @@ spreadsheet.
 
 ## MVP features
 
+- Sign in with Google and sign out through database-backed sessions.
 - Create, view, edit, and delete job applications.
 - Track applications through `Applied`, `Interview`, `Offer`, and `Rejected`.
 - Add dated events such as interviews and follow-ups.
@@ -16,6 +17,7 @@ spreadsheet.
 
 - React, React Router, TypeScript, Tailwind CSS, and Vite
 - Node.js, Express, TypeScript, and Zod
+- Better Auth for Google sign-in and session management
 - PostgreSQL through raw parameterized SQL with `pg`
 - npm workspaces for the monorepo
 
@@ -127,8 +129,8 @@ npm run db:check
 
 The server uses Better Auth with Google and requires the following configuration
 at startup. The separate `db:check` command still needs only the database settings.
-The browser sign-in screen and per-user ownership are separate checkpoints;
-do not deploy this backend publicly until ownership isolation is finished.
+Per-user ownership is still a separate checkpoint; do not deploy this backend
+publicly until ownership isolation is finished.
 
 1. Create a project in the [Google Cloud Console](https://console.cloud.google.com/).
 2. In **Google Auth platform**, configure **Branding** and choose an **External**
@@ -173,7 +175,7 @@ and [Better Auth's Google guide](https://better-auth.com/docs/authentication/goo
 
 ### How backend authentication works
 
-1. The frontend will start Google sign-in through `/api/auth/sign-in/social`.
+1. The frontend starts Google sign-in through `/api/auth/sign-in/social`.
    Better Auth handles the Google callback and creates a database-backed session.
 2. The browser sends its HttpOnly session cookie with later `/api` requests.
    The existing Vite proxy forwards these requests to Express locally.
@@ -207,9 +209,35 @@ npm run dev:web
 Open `http://localhost:5173`. The API health endpoint is available at
 `http://localhost:3000/api/health`.
 
-Application and dashboard requests now require a session cookie. Until the
-frontend sign-in checkpoint is implemented, their pages will show a sign-in
-error. This is expected; do not remove the server session guard to bypass it.
+While signed out, application and dashboard pages redirect to `/sign-in`.
+Choose **Continue with Google** to sign in. The header shows your name, email,
+and a **Sign out** button once your session is loaded.
+
+Use `localhost:5173` for the frontend, not `127.0.0.1` or Vite's next available
+port. It must match `WEB_ORIGIN`. Google's registered callback still points to
+Express on port 3000; Better Auth then returns you to the frontend on port 5173.
+
+### How frontend authentication works
+
+- `features/auth/api/auth-client.ts` creates one shared Better Auth React client.
+  It calls same-origin `/api/auth` URLs through Vite's proxy. No frontend auth
+  secrets, manual session storage, or extra context provider are needed.
+- `RequireSession` waits for the session before rendering protected pages. A
+  missing session redirects to sign-in; a failed session check offers Retry.
+  Better Auth also rechecks sessions on window focus and shares sign-out across
+  tabs. The Express session guard remains the actual security boundary.
+- The sign-in URL remembers the requested page, including filters, in `returnTo`.
+  A frontend-only Zod schema accepts only local dashboard/application paths.
+  It rejects external destinations and sign-in loops, falling back to `/`.
+- `GoogleSignInButton` gives Better Auth explicit frontend success/error return
+  URLs. Better Auth handles the Google redirect and callback; Applyr never asks
+  for your Google password. The button uses Google's
+  [official G icon and branding guidance](https://developers.google.com/identity/branding-guidelines).
+- After confirmed sign-out, a full-page `location.replace('/sign-in')` clears
+  in-memory application state and replaces the current history entry. It does
+  not erase all browser history; the session guard blocks older protected pages.
+
+Client usage follows [Better Auth's React client documentation](https://better-auth.com/docs/concepts/client).
 
 ## Verification
 
@@ -242,14 +270,39 @@ curl -i http://localhost:3000/api/dashboard
 Expected statuses, in order: `200`, `200`, `200` with a `null` session, `401`,
 and `401`. The protected endpoints should return the shared `UNAUTHORIZED`
 error while signed out. These checks do not complete a real Google login;
-the browser sign-in flow still needs verification after the frontend is added.
+verify that separately in the browser using the steps below.
 
 Command-line clients must send an allowed `Origin` header for auth writes and
 authenticated application writes, for example `Origin: http://localhost:5173`.
 
+### Manual Google sign-in check
+
+1. With both servers running, open
+   `http://localhost:5173/applications?status=Interview` while signed out.
+   You should see sign-in, not application records.
+2. Choose **Continue with Google** and finish Google's sign-in screen yourself.
+   You should return to Applications with the Interview filter preserved, and
+   your name/email should appear in the header.
+3. Refresh the page. Your session should survive the refresh.
+4. Open Applyr in another tab. Sign out in the first tab, then return to the
+   second. Both tabs should show sign-in; refreshing or using Back must not
+   reveal a protected page while signed out.
+5. Cancel Google consent, if Google presents it. You should return to sign-in
+   with a useful message and be able to retry.
+6. Stop the API and refresh Applyr. Expect a session-check error with Retry, not
+   a false "signed out" result. Restart the API and choose Retry.
+
+`redirect_uri_mismatch` means Google's registered callback does not exactly
+match `http://localhost:3000/api/auth/callback/google`. An origin error means
+the frontend URL does not match `WEB_ORIGIN`. If Google keeps the app in Testing,
+use an allowed test account. Do not share passwords, session cookies, or `.env`
+when reporting an error.
+
+These checks are local only. Sign-in does not yet isolate users' job records.
+
 ### Manual MVP smoke test
 
-Run these steps after frontend sign-in is available:
+Run these steps after signing in:
 
 1. Open the dashboard and confirm all counts load.
 2. Create an application and confirm it appears in the list.
@@ -291,6 +344,6 @@ the built React application. A production deployment must provide Express with
 `DATABASE_URL`, route browser requests under `/api/*` to Express, and make
 non-file frontend routes fall back to `index.html`. All auth environment variables
 must also be configured with production values. Before public release, finish
-per-user ownership checks, frontend sign-in, production OAuth setup, and
+per-user ownership checks, production OAuth setup, and
 proxy-aware shared rate limiting. The current auth rate limiter uses in-process
 memory, which is appropriate for local checks, not a shared serverless limit.
