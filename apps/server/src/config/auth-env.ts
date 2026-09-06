@@ -31,3 +31,5 @@ if (!parsed.success) {
 }
 
 export const authEnv = parsed.data;
+
+export const trustedOrigins = [authEnv.BETTER_AUTH_URL, authEnv.WEB_ORIGIN];
