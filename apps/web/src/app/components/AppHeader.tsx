@@ -1,5 +1,12 @@
-import { Link, NavLink, type NavLinkRenderProps } from "react-router";
+import {
+  Link,
+  NavLink,
+  useLocation,
+  type NavLinkRenderProps,
+} from "react-router";
 
+import { authClient } from "../../features/auth/api/auth-client";
+import { AccountControl } from "../../features/auth/components/AccountControl";
 import { actionClassNames } from "../../shared/styles/actionStyles";
 
 const navigationLinkClassName = ({ isActive }: NavLinkRenderProps): string => {
@@ -12,6 +19,10 @@ const navigationLinkClassName = ({ isActive }: NavLinkRenderProps): string => {
 };
 
 export function AppHeader() {
+  const { data: session, isPending, error } = authClient.useSession();
+  const location = useLocation();
+  const user = !isPending && !error ? session?.user : undefined;
+
   return (
     <>
       <a
@@ -22,7 +33,7 @@ export function AppHeader() {
       </a>
 
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto grid max-w-4xl gap-3 px-6 py-3 sm:flex sm:items-center sm:px-10">
+        <div className="mx-auto grid max-w-4xl gap-3 px-6 py-3 sm:flex sm:flex-wrap sm:items-center sm:px-10">
           <Link
             className="flex min-h-11 shrink-0 items-center gap-3 rounded-control text-ink"
             to="/"
@@ -66,30 +77,47 @@ export function AppHeader() {
             </span>
           </Link>
 
-          <nav
-            aria-label="Primary navigation"
-            className="w-full border-t border-border pt-3 sm:ml-auto sm:w-auto sm:border-0 sm:pt-0"
-          >
-            <ul className="flex flex-col gap-1 sm:flex-row sm:items-center">
-              <li>
-                <NavLink className={navigationLinkClassName} end to="/">
-                  Overview
-                </NavLink>
-              </li>
-              <li>
-                <NavLink className={navigationLinkClassName} to="/applications">
-                  Applications
-                </NavLink>
-              </li>
-            </ul>
-          </nav>
-
-          <Link
-            className={`${actionClassNames.primary} w-full sm:w-auto`}
-            to="/applications/new"
-          >
-            Add application
-          </Link>
+          {user ? (
+            <>
+              <nav
+                aria-label="Primary navigation"
+                className="w-full border-t border-border pt-3 sm:ml-auto sm:w-auto sm:border-0 sm:pt-0"
+              >
+                <ul className="flex flex-col gap-1 sm:flex-row sm:items-center">
+                  <li>
+                    <NavLink className={navigationLinkClassName} end to="/">
+                      Overview
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      className={navigationLinkClassName}
+                      to="/applications"
+                    >
+                      Applications
+                    </NavLink>
+                  </li>
+                </ul>
+              </nav>
+              <Link
+                className={`${actionClassNames.primary} w-full sm:w-auto`}
+                to="/applications/new"
+              >
+                Add application
+              </Link>
+              <AccountControl key={user.id} user={user} />
+            </>
+          ) : (
+            !isPending &&
+            location.pathname !== "/sign-in" && (
+              <Link
+                className={`${actionClassNames.secondary} w-full sm:ml-auto sm:w-auto`}
+                to="/sign-in"
+              >
+                Sign in
+              </Link>
+            )
+          )}
         </div>
       </header>
     </>
