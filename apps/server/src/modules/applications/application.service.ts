@@ -12,33 +12,37 @@ import {
   updateApplicationById,
 } from "./application.repository.js";
 
-export async function listApplications(): Promise<Application[]> {
-  const applications = await findAllApplications();
+export async function listApplications(userId: string): Promise<Application[]> {
+  const applications = await findAllApplications(userId);
 
   return applications;
 }
 
 export async function getApplication(
+  userId: string,
   applicationId: number,
 ): Promise<Application | null> {
-  return findApplicationById(applicationId);
+  return findApplicationById(userId, applicationId);
 }
 
 export async function createApplication(
+  userId: string,
   input: CreateApplicationRequest,
 ): Promise<Application> {
-  return insertApplication(input);
+  return insertApplication(userId, input);
 }
 
 export async function updateApplication(
+  userId: string,
   applicationId: number,
   input: UpdateApplicationRequest,
 ): Promise<Application | null> {
-  return updateApplicationById(applicationId, input);
+  return updateApplicationById(userId, applicationId, input);
 }
 
 export async function deleteApplication(
+  userId: string,
   applicationId: number,
 ): Promise<boolean> {
-  return deleteApplicationById(applicationId);
+  return deleteApplicationById(userId, applicationId);
 }

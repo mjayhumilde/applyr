@@ -7,7 +7,7 @@ import {
 import type { PoolClient } from "pg";
 import { z } from "zod";
 
-import { pool } from "../../db/pool.js";
+import { withUserTransaction } from "../../db/with-user-transaction.js";
 
 type RawApplicationRow = Record<string, unknown>;
 type RawIdRow = Record<string, unknown>;
@@ -46,6 +46,7 @@ const selectApplicationsSql = `
   FROM public.applications AS a
   JOIN public.companies AS c
     ON c.id = a.company_id
+    AND c.user_id = a.user_id
   LEFT JOIN public.application_events AS ae
     ON ae.application_id = a.id
 `;
@@ -65,6 +66,7 @@ const groupApplicationsSql = `
 
 const findAllApplicationsSql = `
   ${selectApplicationsSql}
+  WHERE a.user_id = $1
   ${groupApplicationsSql}
   ORDER BY
     a.date_applied DESC,
@@ -73,24 +75,25 @@ const findAllApplicationsSql = `
 
 const findApplicationByIdSql = `
   ${selectApplicationsSql}
-  WHERE a.id = $1
+  WHERE a.user_id = $1 AND a.id = $2
   ${groupApplicationsSql};
 `;
 
 const lockApplicationByIdSql = `
   SELECT id
   FROM public.applications
-  WHERE id = $1
+  WHERE user_id = $1 AND id = $2
   FOR UPDATE;
 `;
 
 const upsertCompanySql = `
   INSERT INTO public.companies AS existing_company (
+    user_id,
     name,
     website
   )
-  VALUES ($1, $2)
-  ON CONFLICT (lower(btrim(name)))
+  VALUES ($1, $2, $3)
+  ON CONFLICT (user_id, lower(btrim(name)))
   DO UPDATE SET
     website = COALESCE(existing_company.website, EXCLUDED.website)
   RETURNING id;
@@ -98,6 +101,7 @@ const upsertCompanySql = `
 
 const insertApplicationSql = `
   INSERT INTO public.applications (
+    user_id,
     company_id,
     role,
     job_post_link,
@@ -105,58 +109,66 @@ const insertApplicationSql = `
     date_applied,
     notes
   )
-  VALUES ($1, $2, $3, $4, $5, $6)
+  VALUES ($1, $2, $3, $4, $5, $6, $7)
   RETURNING id;
 `;
 
 const updateApplicationSql = `
   UPDATE public.applications
   SET
-    company_id = $2,
-    role = $3,
-    job_post_link = $4,
-    status = $5,
-    date_applied = $6,
-    notes = $7,
+    company_id = $3,
+    role = $4,
+    job_post_link = $5,
+    status = $6,
+    date_applied = $7,
+    notes = $8,
     updated_at = CURRENT_TIMESTAMP
-  WHERE id = $1
+  WHERE user_id = $1 AND id = $2
   RETURNING id;
 `;
 
 const deleteApplicationSql = `
   DELETE FROM public.applications
-  WHERE id = $1
+  WHERE user_id = $1 AND id = $2
   RETURNING id;
 `;
 
-export async function findAllApplications(): Promise<Application[]> {
-  const result = await pool.query<RawApplicationRow>(findAllApplicationsSql);
+export async function findAllApplications(
+  userId: string,
+): Promise<Application[]> {
+  return withUserTransaction(userId, async (client) => {
+    const result = await client.query<RawApplicationRow>(findAllApplicationsSql, [
+      userId,
+    ]);
 
-  return applicationRowsSchema.parse(result.rows);
+    return applicationRowsSchema.parse(result.rows);
+  });
 }
 
 export async function findApplicationById(
+  userId: string,
   applicationId: number,
 ): Promise<Application | null> {
-  const result = await pool.query<RawApplicationRow>(findApplicationByIdSql, [
-    applicationId,
-  ]);
+  return withUserTransaction(userId, async (client) => {
+    const result = await client.query<RawApplicationRow>(findApplicationByIdSql, [
+      userId,
+      applicationId,
+    ]);
 
-  return parseApplicationRow(result.rows[0]);
+    return parseApplicationRow(result.rows[0]);
+  });
 }
 
 export async function insertApplication(
+  userId: string,
   input: CreateApplicationRequest,
 ): Promise<Application> {
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
-    const companyId = await upsertCompany(client, input.company);
+  return withUserTransaction(userId, async (client) => {
+    const companyId = await upsertCompany(client, userId, input.company);
     const applicationIdResult = await client.query<RawIdRow>(
       insertApplicationSql,
       [
+        userId,
         companyId,
         input.role,
         input.jobPostLink,
@@ -171,7 +183,7 @@ export async function insertApplication(
 
     const applicationResult = await client.query<RawApplicationRow>(
       findApplicationByIdSql,
-      [applicationId],
+      [userId, applicationId],
     );
     const application = parseApplicationRow(applicationResult.rows[0]);
 
@@ -179,43 +191,33 @@ export async function insertApplication(
       throw new Error("Created application could not be loaded");
     }
 
-    await client.query("COMMIT");
-
     return application;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 export async function updateApplicationById(
+  userId: string,
   applicationId: number,
   input: UpdateApplicationRequest,
 ): Promise<Application | null> {
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
+  return withUserTransaction(userId, async (client) => {
     const existingApplicationResult = await client.query<RawIdRow>(
       lockApplicationByIdSql,
-      [applicationId],
+      [userId, applicationId],
     );
     const existingApplicationRow = existingApplicationResult.rows[0];
 
     if (existingApplicationRow === undefined) {
-      await client.query("ROLLBACK");
       return null;
     }
 
     idRowSchema.parse(existingApplicationRow);
 
-    const companyId = await upsertCompany(client, input.company);
+    const companyId = await upsertCompany(client, userId, input.company);
     const applicationIdResult = await client.query<RawIdRow>(
       updateApplicationSql,
       [
+        userId,
         applicationId,
         companyId,
         input.role,
@@ -236,7 +238,7 @@ export async function updateApplicationById(
     );
     const applicationResult = await client.query<RawApplicationRow>(
       findApplicationByIdSql,
-      [updatedApplicationId],
+      [userId, updatedApplicationId],
     );
     const application = parseApplicationRow(applicationResult.rows[0]);
 
@@ -244,39 +246,38 @@ export async function updateApplicationById(
       throw new Error("Updated application could not be loaded");
     }
 
-    await client.query("COMMIT");
-
     return application;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 export async function deleteApplicationById(
+  userId: string,
   applicationId: number,
 ): Promise<boolean> {
-  const result = await pool.query<RawIdRow>(deleteApplicationSql, [
-    applicationId,
-  ]);
-  const deletedApplicationRow = result.rows[0];
+  return withUserTransaction(userId, async (client) => {
+    const result = await client.query<RawIdRow>(deleteApplicationSql, [
+      userId,
+      applicationId,
+    ]);
+    const deletedApplicationRow = result.rows[0];
 
-  if (deletedApplicationRow === undefined) {
-    return false;
-  }
+    if (deletedApplicationRow === undefined) {
+      return false;
+    }
 
-  idRowSchema.parse(deletedApplicationRow);
+    idRowSchema.parse(deletedApplicationRow);
 
-  return true;
+    return true;
+  });
 }
 
 async function upsertCompany(
   client: PoolClient,
+  userId: string,
   company: CreateApplicationRequest["company"],
 ): Promise<number> {
   const companyResult = await client.query<RawIdRow>(upsertCompanySql, [
+    userId,
     company.name,
     company.website,
   ]);

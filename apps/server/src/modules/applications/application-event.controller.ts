@@ -5,6 +5,7 @@ import {
 } from "@applyr/contracts";
 import type { Request, Response } from "express";
 
+import { getAuthenticatedUserId } from "../../auth/get-authenticated-user-id.js";
 import { HttpError } from "../../errors/http-error.js";
 import { parseRequest } from "../../http/parse-request.js";
 import * as applicationEventService from "./application-event.service.js";
@@ -13,6 +14,7 @@ export async function createApplicationEvent(
   req: Request,
   res: Response,
 ): Promise<void> {
+  const userId = getAuthenticatedUserId(req);
   const { applicationId } = parseRequest(
     applicationIdParamsSchema,
     req.params,
@@ -24,6 +26,7 @@ export async function createApplicationEvent(
     "body",
   );
   const event = await applicationEventService.createApplicationEvent(
+    userId,
     applicationId,
     requestBody,
   );

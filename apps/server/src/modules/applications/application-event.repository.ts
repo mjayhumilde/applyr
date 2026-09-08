@@ -5,7 +5,7 @@ import {
 } from "@applyr/contracts";
 import { z } from "zod";
 
-import { pool } from "../../db/pool.js";
+import { withUserTransaction } from "../../db/with-user-transaction.js";
 
 type RawApplicationEventRow = Record<string, unknown>;
 type RawIdRow = Record<string, unknown>;
@@ -17,7 +17,7 @@ const idRowSchema = z.object({
 const lockApplicationByIdSql = `
   SELECT id
   FROM public.applications
-  WHERE id = $1
+  WHERE user_id = $1 AND id = $2
   FOR KEY SHARE;
 `;
 
@@ -35,22 +35,18 @@ const insertApplicationEventSql = `
 `;
 
 export async function insertApplicationEvent(
+  userId: string,
   applicationId: number,
   input: CreateApplicationEventRequest,
 ): Promise<ApplicationEvent | null> {
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
+  return withUserTransaction(userId, async (client) => {
     const applicationResult = await client.query<RawIdRow>(
       lockApplicationByIdSql,
-      [applicationId],
+      [userId, applicationId],
     );
     const applicationRow = applicationResult.rows[0];
 
     if (applicationRow === undefined) {
-      await client.query("ROLLBACK");
       return null;
     }
 
@@ -62,13 +58,6 @@ export async function insertApplicationEvent(
     );
     const event = applicationEventSchema.parse(eventResult.rows[0]);
 
-    await client.query("COMMIT");
-
     return event;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }

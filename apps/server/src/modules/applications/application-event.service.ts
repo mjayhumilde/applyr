@@ -6,8 +6,9 @@ import type {
 import { insertApplicationEvent } from "./application-event.repository.js";
 
 export async function createApplicationEvent(
+  userId: string,
   applicationId: number,
   input: CreateApplicationEventRequest,
 ): Promise<ApplicationEvent | null> {
-  return insertApplicationEvent(applicationId, input);
+  return insertApplicationEvent(userId, applicationId, input);
 }

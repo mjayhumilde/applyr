@@ -7,15 +7,17 @@ import {
 } from "@applyr/contracts";
 import type { Request, Response } from "express";
 
+import { getAuthenticatedUserId } from "../../auth/get-authenticated-user-id.js";
 import { HttpError } from "../../errors/http-error.js";
 import { parseRequest } from "../../http/parse-request.js";
 import * as applicationService from "./application.service.js";
 
 export async function getApplications(
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> {
-  const applications = await applicationService.listApplications();
+  const userId = getAuthenticatedUserId(req);
+  const applications = await applicationService.listApplications(userId);
 
   const responseBody = applicationListResponseSchema.parse({
     data: applications,
@@ -28,12 +30,16 @@ export async function getApplication(
   req: Request,
   res: Response,
 ): Promise<void> {
+  const userId = getAuthenticatedUserId(req);
   const { applicationId } = parseRequest(
     applicationIdParamsSchema,
     req.params,
     "params",
   );
-  const application = await applicationService.getApplication(applicationId);
+  const application = await applicationService.getApplication(
+    userId,
+    applicationId,
+  );
 
   if (application === null) {
     throw new HttpError(404, "NOT_FOUND", "Application not found");
@@ -50,12 +56,16 @@ export async function createApplication(
   req: Request,
   res: Response,
 ): Promise<void> {
+  const userId = getAuthenticatedUserId(req);
   const requestBody = parseRequest(
     createApplicationRequestSchema,
     req.body,
     "body",
   );
-  const application = await applicationService.createApplication(requestBody);
+  const application = await applicationService.createApplication(
+    userId,
+    requestBody,
+  );
 
   const responseBody = applicationResponseSchema.parse({
     data: application,
@@ -71,6 +81,7 @@ export async function updateApplication(
   req: Request,
   res: Response,
 ): Promise<void> {
+  const userId = getAuthenticatedUserId(req);
   const { applicationId } = parseRequest(
     applicationIdParamsSchema,
     req.params,
@@ -82,6 +93,7 @@ export async function updateApplication(
     "body",
   );
   const application = await applicationService.updateApplication(
+    userId,
     applicationId,
     requestBody,
   );
@@ -101,12 +113,16 @@ export async function deleteApplication(
   req: Request,
   res: Response,
 ): Promise<void> {
+  const userId = getAuthenticatedUserId(req);
   const { applicationId } = parseRequest(
     applicationIdParamsSchema,
     req.params,
     "params",
   );
-  const wasDeleted = await applicationService.deleteApplication(applicationId);
+  const wasDeleted = await applicationService.deleteApplication(
+    userId,
+    applicationId,
+  );
 
   if (!wasDeleted) {
     throw new HttpError(404, "NOT_FOUND", "Application not found");

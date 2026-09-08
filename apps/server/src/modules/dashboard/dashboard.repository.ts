@@ -3,7 +3,7 @@ import {
   type DashboardSummary,
 } from "@applyr/contracts";
 
-import { pool } from "../../db/pool.js";
+import { withUserTransaction } from "../../db/with-user-transaction.js";
 
 type RawDashboardSummaryRow = Record<string, unknown>;
 
@@ -16,13 +16,19 @@ const findDashboardSummarySql = `
       'Offer', (COUNT(*) FILTER (WHERE status = 'Offer'))::integer,
       'Rejected', (COUNT(*) FILTER (WHERE status = 'Rejected'))::integer
     ) AS "byStatus"
-  FROM public.applications;
+  FROM public.applications
+  WHERE user_id = $1;
 `;
 
-export async function findDashboardSummary(): Promise<DashboardSummary> {
-  const result = await pool.query<RawDashboardSummaryRow>(
-    findDashboardSummarySql,
-  );
+export async function findDashboardSummary(
+  userId: string,
+): Promise<DashboardSummary> {
+  return withUserTransaction(userId, async (client) => {
+    const result = await client.query<RawDashboardSummaryRow>(
+      findDashboardSummarySql,
+      [userId],
+    );
 
-  return dashboardSummarySchema.parse(result.rows[0]);
+    return dashboardSummarySchema.parse(result.rows[0]);
+  });
 }
