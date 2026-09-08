@@ -7,6 +7,7 @@ spreadsheet.
 ## MVP features
 
 - Sign in with Google and sign out through database-backed sessions.
+- Keep each user's applications, companies, events, and dashboard counts private.
 - Create, view, edit, and delete job applications.
 - Track applications through `Applied`, `Interview`, `Offer`, and `Rejected`.
 - Add dated events such as interviews and follow-ups.
@@ -55,7 +56,7 @@ it should not be able to create or drop tables.
 Run these commands as the PostgreSQL administrator:
 
 ```bash
-psql -U postgres -d postgres -c "CREATE ROLE applyr_app WITH LOGIN PASSWORD 'CHOOSE_A_LOCAL_PASSWORD' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
+psql -U postgres -d postgres -c "CREATE ROLE applyr_app WITH LOGIN PASSWORD 'CHOOSE_A_LOCAL_PASSWORD' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;"
 psql -U postgres -d postgres -c "CREATE DATABASE job_tracker;"
 ```
 
@@ -79,20 +80,78 @@ local setup):
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/001_initial_schema.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/002_unique_company_name.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/003_auth_schema.sql
+psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/004_user_owned_applications.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO applyr_app; GRANT SELECT, INSERT, UPDATE, DELETE ON public.companies, public.applications, public.application_events, public.auth_users, public.auth_sessions, public.auth_accounts, public.auth_verifications TO applyr_app; GRANT USAGE ON SEQUENCE public.companies_id_seq, public.applications_id_seq, public.application_events_id_seq TO applyr_app;"
 ```
 
-These migrations are sequential and one-way. They are intended for a fresh
-database and are not safe to rerun after they succeed. The project deliberately
-uses SQL files instead of an ORM migration tool while PostgreSQL is being
-learned.
+These migrations are sequential and one-way. Do not rerun a migration after it
+succeeds. Migration 004 needs no legacy owner when the business tables are empty.
+The project deliberately uses SQL files instead of an ORM migration tool while
+PostgreSQL is being learned.
 
 If your database already exists, do not recreate it or rerun old migrations.
-Back it up, apply only the new migration, and grant access to its new tables.
-For the authentication upgrade, run only migration 003 from the commands above,
-then the permissions command. Keep `DATABASE_URL` connected as `applyr_app`, not
-`postgres`. If the migration commits but the permissions command fails, fix and
-rerun only the permissions command; do not rerun the migration.
+Back it up and apply only migrations that have not already succeeded. If you
+still need migration 003, apply it and its permissions command before the
+ownership upgrade below. Keep `DATABASE_URL` connected as `applyr_app`, not
+`postgres`.
+
+### Upgrade existing records to per-user ownership
+
+Use these steps when migrations 001–003 have already succeeded. Do not run the
+fresh setup commands again.
+
+1. Stop the API to prevent writes during the upgrade.
+2. Make a private backup as `postgres`. Replace the output path with an existing
+   directory outside the repository and choose a new filename:
+
+   ```bash
+   pg_dump -h localhost -p 5432 -U postgres -d job_tracker -Fc -f "/absolute/private/path/job_tracker-before-ownership-YYYYMMDD-HHMM.dump"
+   pg_restore --list "/absolute/private/path/job_tracker-before-ownership-YYYYMMDD-HHMM.dump"
+   ```
+
+   Continue only if the dump succeeds and its archive listing can be read. This
+   checks the archive, not a full restore. Backups include private application
+   data, session records, and OAuth credentials; never commit or share them.
+   After migration 004, full backups must still use an administrator that can
+   bypass row-level security. Do not add `--enable-row-security`: it can produce
+   only the rows visible to the backup user. See [PostgreSQL's pg_dump guide](https://www.postgresql.org/docs/18/app-pgdump.html).
+3. Find the account that should own the existing records:
+
+   ```bash
+   psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "SELECT id, name, email FROM public.auth_users ORDER BY created_at;"
+   ```
+
+   Explicitly confirm the owner; do not choose the first account automatically.
+   That account must already exist after a successful Google sign-in. Migration
+   004 assigns all existing companies and applications to this one owner and
+   preserves their IDs and events. If existing records belong to different
+   people, stop and plan their assignments before running this migration.
+4. Replace `CONFIRMED_USER_ID` with that account's exact `id`, then run both
+   options in the same `psql` command so they share one database connection:
+
+   ```bash
+   psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "SET applyr.legacy_owner_id = 'CONFIRMED_USER_ID';" -f apps/server/database/migrations/004_user_owned_applications.sql
+   ```
+
+   If records exist but the owner is missing or does not exist in `auth_users`,
+   the migration fails and its transaction rolls back. A lock timeout also
+   rolls it back; close other open transactions before retrying. Do not rerun it
+   after `COMMIT` succeeds.
+5. Verify the runtime role cannot bypass the ownership policies:
+
+   ```bash
+   psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'applyr_app';"
+   ```
+
+   Both flags must be `f`. If necessary, correct them as the administrator:
+
+   ```bash
+   psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "ALTER ROLE applyr_app NOSUPERUSER NOBYPASSRLS;"
+   ```
+
+Migration 004 modifies existing business tables, so their existing grants still
+apply; it needs no new table grants. Restart the API only after the migration
+succeeds, then run the two-account checks below.
 
 ## 4. Configure the server
 
@@ -129,8 +188,8 @@ npm run db:check
 
 The server uses Better Auth with Google and requires the following configuration
 at startup. The separate `db:check` command still needs only the database settings.
-Per-user ownership is still a separate checkpoint; do not deploy this backend
-publicly until ownership isolation is finished.
+Keep this setup local. Production OAuth, hosting configuration, and shared rate
+limiting still need their deployment checkpoint.
 
 1. Create a project in the [Google Cloud Console](https://console.cloud.google.com/).
 2. In **Google Auth platform**, configure **Branding** and choose an **External**
@@ -189,8 +248,34 @@ Better Auth manages `auth_users`, `auth_accounts`, `auth_sessions`, and
 The auth handler is registered before `express.json()` so it can read and
 validate its own request body.
 
-Authentication identifies the signed-in user. Per-user application ownership
-is not implemented yet, so signed-in users would still access the same records.
+### How per-user ownership works
+
+- Controllers read the user ID from the verified `req.authSession`, never from
+  a form field, URL parameter, or request body. Services pass it to repositories.
+- Application reads, writes, and dashboard counts use parameterized SQL owner
+  filters. Another user's application ID returns the same `404` as a missing
+  application, including when adding an event.
+- `apps/server/src/db/with-user-transaction.ts` checks out one `pg` client,
+  begins a transaction, and sets `applyr.user_id` with `set_config(..., true)`.
+  The `true` makes this identity transaction-local: it ends at commit or
+  rollback instead of remaining on a pooled connection for the next user.
+  The helper always releases the client and discards it if rollback fails.
+- PostgreSQL row-level security (RLS) adds a database check on companies,
+  applications, and events. Without a matching transaction-local identity, the
+  runtime role cannot read or write their rows. Better Auth's tables are separate
+  because session verification must work before a user identity is established.
+- Companies have an owner too. Their normalized names are unique per user, so
+  two users can independently track the same company without sharing its website
+  or company record. The composite foreign key `(user_id, company_id)` prevents
+  an application from referring to another user's company.
+- Events inherit ownership through their parent application rather than storing
+  a duplicate user ID. Account deletion is not implemented; the owner foreign
+  keys use `ON DELETE RESTRICT` to prevent accidental deletion of an account
+  that still owns business records.
+
+The trusted server supplies the database identity; RLS is defense in depth, not
+a substitute for session verification. Never run the API as `postgres`, a
+superuser, or a role with `BYPASSRLS`. See [PostgreSQL's row security guide](https://www.postgresql.org/docs/18/ddl-rowsecurity.html).
 
 ## 5. Run Applyr
 
@@ -298,7 +383,64 @@ the frontend URL does not match `WEB_ORIGIN`. If Google keeps the app in Testing
 use an allowed test account. Do not share passwords, session cookies, or `.env`
 when reporting an error.
 
-These checks are local only. Sign-in does not yet isolate users' job records.
+These checks are local only. Also verify record ownership with two accounts.
+
+### Manual two-account isolation check
+
+Use two separate browser profiles (or a normal and private window) so each has
+its own Google session. Both accounts must be allowed by Google's current OAuth
+audience settings. Use temporary test records, not applications you need to keep.
+
+1. Sign in as account A. Create an application for `Ownership test company` with
+   website `https://example.com/a`, add an event, and note its application ID.
+2. Sign in as account B in the other browser. A's application and event must not
+   appear in B's list or dashboard. Create the same company name with website
+   `https://example.com/b`. Both records must retain their own website and have
+   different company IDs in the application API responses.
+3. In B's browser, open A's details URL. Expect "Application not found". Also
+   test the API directly; hiding a link is not an authorization check. In the
+   developer console on `http://localhost:5173`, replace `123` below with A's
+   temporary application ID and run:
+
+   ```javascript
+   const foreignId = 123;
+   const applicationInput = {
+     company: { name: "Must not be created", website: null },
+     role: "Ownership check",
+     jobPostLink: null,
+     status: "Applied",
+     dateApplied: "2026-09-06",
+     notes: null,
+   };
+   const requests = [
+     ["GET", `/api/applications/${foreignId}`],
+     ["PUT", `/api/applications/${foreignId}`, applicationInput],
+     ["POST", `/api/applications/${foreignId}/events`, {
+       eventType: "Follow-up", eventDate: "2026-09-06",
+     }],
+     ["DELETE", `/api/applications/${foreignId}`],
+   ];
+   for (const [method, path, body] of requests) {
+     const response = await fetch(path, {
+       method,
+       credentials: "same-origin",
+       ...(body === undefined ? {} : {
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify(body),
+       }),
+     });
+     console.log(method, response.status);
+   }
+   ```
+
+   Every request must return `404`, not `400` or `403`. The valid test bodies
+   ensure validation does not hide an ownership bug. The browser supplies its
+   own session cookie and write-request `Origin`; do not copy or share cookies.
+4. Refresh account A. Its application, company website, and event must be
+   unchanged. Repeat in the other direction using B's temporary application ID.
+5. Edit the status of B's own application and add an event successfully. Only B's
+   dashboard counts and details should change. Delete each account's own test
+   application and confirm the other account is unaffected.
 
 ### Manual MVP smoke test
 
@@ -334,8 +476,9 @@ Application and dashboard routes require a verified session; missing or invalid
 sessions return `401`. Writes must also supply an `Origin` matching
 `WEB_ORIGIN` or `BETTER_AUTH_URL`; missing/untrusted origins return `403`.
 Invalid application request data returns the shared JSON error response with
-status `400`. Missing applications or routes return `404`, and unexpected server
-failures return `500`. Better Auth owns its `/api/auth/*` response formats.
+status `400`. Missing applications, applications owned by someone else, or
+unknown routes return `404`, and unexpected server failures return `500`.
+Better Auth owns its `/api/auth/*` response formats.
 
 ## Deployment note
 
@@ -343,7 +486,8 @@ The current repository runs Vite and Express separately; Express does not serve
 the built React application. A production deployment must provide Express with
 `DATABASE_URL`, route browser requests under `/api/*` to Express, and make
 non-file frontend routes fall back to `index.html`. All auth environment variables
-must also be configured with production values. Before public release, finish
-per-user ownership checks, production OAuth setup, and
-proxy-aware shared rate limiting. The current auth rate limiter uses in-process
+must also be configured with production values. Before public release, repeat
+the two-account ownership checks in the deployed environment and finish
+production OAuth setup and proxy-aware shared rate limiting. The current auth
+rate limiter uses in-process
 memory, which is appropriate for local checks, not a shared serverless limit.
