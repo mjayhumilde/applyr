@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 
 import { authEnv, trustedOrigins } from "../config/auth-env.js";
+import { env } from "../config/env.js";
 import { pool } from "../db/pool.js";
 
 export const auth = betterAuth({
@@ -10,6 +11,9 @@ export const auth = betterAuth({
   secret: authEnv.BETTER_AUTH_SECRET,
   database: pool,
   trustedOrigins,
+  advanced: {
+    ipAddress: { ipAddressHeaders: ["x-applyr-client-ip"] },
+  },
   socialProviders: {
     google: {
       clientId: authEnv.GOOGLE_CLIENT_ID,
@@ -65,8 +69,13 @@ export const auth = betterAuth({
       updatedAt: "updated_at",
     },
   },
-  // Use Better Auth's built-in limits during local development too.
-  rateLimit: { enabled: true },
+  // Production instances share atomic counters; local development needs no new table.
+  rateLimit: {
+    enabled: true,
+    storage: env.NODE_ENV === "production" ? "database" : "memory",
+    modelName: "auth_rate_limits",
+    fields: { lastRequest: "last_request" },
+  },
   telemetry: { enabled: false },
 });
 

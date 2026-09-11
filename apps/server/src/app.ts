@@ -8,6 +8,7 @@ import {
 } from "./middleware/error.middleware.js";
 import { requireAuth } from "./middleware/require-auth.middleware.js";
 import { requireTrustedOrigin } from "./middleware/require-trusted-origin.middleware.js";
+import { trustedClientIp } from "./middleware/trusted-client-ip.middleware.js";
 import { applicationRouter } from "./modules/applications/application.route.js";
 import { dashboardRouter } from "./modules/dashboard/dashboard.route.js";
 import { healthRouter } from "./modules/health/health.route.js";
@@ -22,6 +23,8 @@ export function createApp(): Express {
     res.setHeader("Cache-Control", "no-store");
     next();
   });
+
+  app.use("/api", trustedClientIp);
 
   // Better Auth reads the raw request stream, so it must precede express.json.
   app.all("/api/auth/*splat", requireTrustedOrigin, toNodeHandler(auth));
