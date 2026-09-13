@@ -59,9 +59,13 @@ export function ApplicationDetailsPanel({
             Applied
           </dt>
           <dd className="mt-2 text-sm font-semibold text-ink">
-            <time dateTime={application.dateApplied}>
-              {formatApplicationDate(application.dateApplied)}
-            </time>
+            {application.dateApplied === null ? (
+              <span className="text-muted">Not applied yet</span>
+            ) : (
+              <time dateTime={application.dateApplied}>
+                {formatApplicationDate(application.dateApplied)}
+              </time>
+            )}
           </dd>
         </div>
         <div className="min-w-0 sm:col-span-2">

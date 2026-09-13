@@ -5,6 +5,7 @@ const applicationCountSchema = z.number().int().nonnegative();
 export const dashboardSummarySchema = z.object({
   totalApplications: applicationCountSchema,
   byStatus: z.object({
+    Saved: applicationCountSchema,
     Applied: applicationCountSchema,
     Interview: applicationCountSchema,
     Offer: applicationCountSchema,

@@ -127,12 +127,16 @@ export function ApplicationListItem({
           <p className="font-data text-xs font-semibold text-muted md:sr-only">
             Applied
           </p>
-          <time
-            className="mt-1 block text-sm font-semibold text-ink md:mt-0"
-            dateTime={application.dateApplied}
-          >
-            {formatApplicationDate(application.dateApplied)}
-          </time>
+          {application.dateApplied === null ? (
+            <p className="mt-1 text-sm text-muted md:mt-0">Not applied yet</p>
+          ) : (
+            <time
+              className="mt-1 block text-sm font-semibold text-ink md:mt-0"
+              dateTime={application.dateApplied}
+            >
+              {formatApplicationDate(application.dateApplied)}
+            </time>
+          )}
 
           {application.jobPostLink && (
             <a

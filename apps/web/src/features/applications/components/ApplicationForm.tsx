@@ -1,6 +1,7 @@
 import {
   applicationStatusSchema,
   createApplicationRequestSchema,
+  type ApplicationStatus,
   type CreateApplicationRequest,
 } from "@applyr/contracts";
 import { useState, type SubmitEvent } from "react";
@@ -108,6 +109,9 @@ export function ApplicationForm({
   onSubmit,
   submitLabel = "Save application",
 }: ApplicationFormProps) {
+  const [status, setStatus] = useState<ApplicationStatus>(
+    initialValues?.status ?? "Applied",
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<ApplicationFormFieldErrors>(
     {},
@@ -115,6 +119,23 @@ export function ApplicationForm({
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(
     null,
   );
+  const isSaved = status === "Saved";
+
+  function changeStatus(value: string): void {
+    const statusResult = applicationStatusSchema.safeParse(value);
+
+    if (statusResult.success) {
+      setStatus(statusResult.data);
+      setFieldErrors((currentErrors) => {
+        const nextErrors = { ...currentErrors };
+
+        delete nextErrors.status;
+        delete nextErrors.dateApplied;
+
+        return nextErrors;
+      });
+    }
+  }
 
   async function handleSubmit(
     event: SubmitEvent<HTMLFormElement>,
@@ -139,7 +160,7 @@ export function ApplicationForm({
       role: getTextValue(formData, "role"),
       jobPostLink: emptyStringToNull(getTextValue(formData, "jobPostLink")),
       status: getTextValue(formData, "status"),
-      dateApplied: getTextValue(formData, "dateApplied"),
+      dateApplied: isSaved ? null : getTextValue(formData, "dateApplied"),
       notes: emptyStringToNull(getTextValue(formData, "notes")),
     });
 
@@ -320,28 +341,29 @@ export function ApplicationForm({
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="min-w-0">
-            <label
-              className="text-sm font-medium text-ink"
-              htmlFor="status"
-            >
+            <label className="text-sm font-medium text-ink" htmlFor="status">
               Status
             </label>
             <select
               aria-describedby={
-                fieldErrors.status ? "status-error" : undefined
+                fieldErrors.status ? "status-hint status-error" : "status-hint"
               }
               aria-invalid={fieldErrors.status !== undefined}
               className={inputClassName}
-              defaultValue={initialValues?.status ?? "Applied"}
               id="status"
               name="status"
+              onChange={(event) => changeStatus(event.target.value)}
+              value={status}
             >
-              {applicationStatusSchema.options.map((status) => (
-                <option key={status} value={status}>
-                  {status}
+              {applicationStatusSchema.options.map((statusOption) => (
+                <option key={statusOption} value={statusOption}>
+                  {statusOption}
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-sm text-muted" id="status-hint">
+              Choose Saved to keep a job you want to apply to later.
+            </p>
             {fieldErrors.status !== undefined && (
               <p className={fieldErrorClassName} id="status-error">
                 {fieldErrors.status}
@@ -350,29 +372,38 @@ export function ApplicationForm({
           </div>
 
           <div className="min-w-0">
-            <label
-              className="text-sm font-medium text-ink"
-              htmlFor="dateApplied"
-            >
-              Date applied
-            </label>
-            <input
-              aria-describedby={
-                fieldErrors.dateApplied ? "dateApplied-error" : undefined
-              }
-              aria-invalid={fieldErrors.dateApplied !== undefined}
-              className={inputClassName}
-              defaultValue={initialValues?.dateApplied ?? ""}
-              id="dateApplied"
-              name="dateApplied"
-              required
-              type="date"
-            />
-            {fieldErrors.dateApplied !== undefined && (
-              <p className={fieldErrorClassName} id="dateApplied-error">
-                {fieldErrors.dateApplied}
+            {isSaved && (
+              <p className="text-sm text-muted">
+                Not applied yet. Change the status and add your application date
+                after you apply.
               </p>
             )}
+            <div hidden={isSaved}>
+              <label
+                className="text-sm font-medium text-ink"
+                htmlFor="dateApplied"
+              >
+                Date applied
+              </label>
+              <input
+                aria-describedby={
+                  fieldErrors.dateApplied ? "dateApplied-error" : undefined
+                }
+                aria-invalid={fieldErrors.dateApplied !== undefined}
+                className={inputClassName}
+                defaultValue={initialValues?.dateApplied ?? ""}
+                disabled={isSaved}
+                id="dateApplied"
+                name="dateApplied"
+                required={!isSaved}
+                type="date"
+              />
+              {fieldErrors.dateApplied !== undefined && (
+                <p className={fieldErrorClassName} id="dateApplied-error">
+                  {fieldErrors.dateApplied}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </fieldset>

@@ -1,7 +1,4 @@
-import {
-  type Application,
-  type ApplicationStatus,
-} from "@applyr/contracts";
+import { type Application, type ApplicationStatus } from "@applyr/contracts";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 
@@ -24,10 +21,11 @@ type ApplicationsState =
   | { status: "error"; message: string };
 
 const applicationStatusOrder = {
-  Applied: 0,
-  Interview: 1,
-  Offer: 2,
-  Rejected: 3,
+  Saved: 0,
+  Applied: 1,
+  Interview: 2,
+  Offer: 3,
+  Rejected: 4,
 } satisfies Record<ApplicationStatus, number>;
 
 function sortApplications(
@@ -35,18 +33,28 @@ function sortApplications(
   sort: ApplicationListSort,
 ): Application[] {
   return [...applications].sort((left, right) => {
+    if (sort === "status") {
+      const statusDifference =
+        applicationStatusOrder[left.status] -
+        applicationStatusOrder[right.status];
+
+      if (statusDifference !== 0) {
+        return statusDifference;
+      }
+    }
+
+    // Keep jobs still waiting for an application above dated records.
+    if (left.dateApplied === null) {
+      return right.dateApplied === null ? right.id - left.id : -1;
+    }
+
+    if (right.dateApplied === null) {
+      return 1;
+    }
+
     if (sort === "oldest") {
       return (
         left.dateApplied.localeCompare(right.dateApplied) || left.id - right.id
-      );
-    }
-
-    if (sort === "status") {
-      return (
-        applicationStatusOrder[left.status] -
-          applicationStatusOrder[right.status] ||
-        right.dateApplied.localeCompare(left.dateApplied) ||
-        right.id - left.id
       );
     }
 
@@ -249,9 +257,7 @@ const ApplicationsPage = () => {
           companyQuery={companyQuery}
           dateApplied={dateApplied}
           onClear={clearFilters}
-          onCompanyQueryChange={(value) =>
-            updateSearchParam("company", value)
-          }
+          onCompanyQueryChange={(value) => updateSearchParam("company", value)}
           onDateAppliedChange={(value) => updateSearchParam("date", value)}
           onSortChange={(value) => updateSearchParam("sort", value)}
           onStatusChange={(value) => updateSearchParam("status", value)}
@@ -280,13 +286,12 @@ const ApplicationsPage = () => {
           />
         )}
 
-      {state.status === "success" &&
-        visibleApplications.length > 0 && (
-          <ApplicationList
-            applications={visibleApplications}
-            returnSearch={location.search}
-          />
-        )}
+      {state.status === "success" && visibleApplications.length > 0 && (
+        <ApplicationList
+          applications={visibleApplications}
+          returnSearch={location.search}
+        />
+      )}
     </section>
   );
 };

@@ -9,8 +9,9 @@ type RawDashboardSummaryRow = Record<string, unknown>;
 
 const findDashboardSummarySql = `
   SELECT
-    COUNT(*)::integer AS "totalApplications",
+    (COUNT(*) FILTER (WHERE status <> 'Saved'))::integer AS "totalApplications",
     jsonb_build_object(
+      'Saved', (COUNT(*) FILTER (WHERE status = 'Saved'))::integer,
       'Applied', (COUNT(*) FILTER (WHERE status = 'Applied'))::integer,
       'Interview', (COUNT(*) FILTER (WHERE status = 'Interview'))::integer,
       'Offer', (COUNT(*) FILTER (WHERE status = 'Offer'))::integer,

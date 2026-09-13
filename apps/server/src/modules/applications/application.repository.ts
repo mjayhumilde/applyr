@@ -69,7 +69,7 @@ const findAllApplicationsSql = `
   WHERE a.user_id = $1
   ${groupApplicationsSql}
   ORDER BY
-    a.date_applied DESC,
+    a.date_applied DESC NULLS FIRST,
     a.id DESC;
 `;
 
@@ -137,9 +137,10 @@ export async function findAllApplications(
   userId: string,
 ): Promise<Application[]> {
   return withUserTransaction(userId, async (client) => {
-    const result = await client.query<RawApplicationRow>(findAllApplicationsSql, [
-      userId,
-    ]);
+    const result = await client.query<RawApplicationRow>(
+      findAllApplicationsSql,
+      [userId],
+    );
 
     return applicationRowsSchema.parse(result.rows);
   });
@@ -150,10 +151,10 @@ export async function findApplicationById(
   applicationId: number,
 ): Promise<Application | null> {
   return withUserTransaction(userId, async (client) => {
-    const result = await client.query<RawApplicationRow>(findApplicationByIdSql, [
-      userId,
-      applicationId,
-    ]);
+    const result = await client.query<RawApplicationRow>(
+      findApplicationByIdSql,
+      [userId, applicationId],
+    );
 
     return parseApplicationRow(result.rows[0]);
   });

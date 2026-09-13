@@ -5,6 +5,7 @@ interface StatusBadgeProps {
 }
 
 const statusClassNames = {
+  Saved: "border-control bg-muted/10 text-muted",
   Applied: "border-action/25 bg-action/10 text-action-hover",
   Interview: "border-interview/25 bg-interview/10 text-interview",
   Offer: "border-offer/25 bg-offer/10 text-offer",
