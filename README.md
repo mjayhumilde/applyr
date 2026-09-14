@@ -9,10 +9,11 @@ spreadsheet.
 - Sign in with Google and sign out through database-backed sessions.
 - Keep each user's applications, companies, events, and dashboard counts private.
 - Create, view, edit, and delete job applications.
-- Track applications through `Applied`, `Interview`, `Offer`, and `Rejected`.
+- Save jobs to apply to later with `Saved`, then track them through `Applied`,
+  `Interview`, `Offer`, and `Rejected`.
 - Add dated events such as interviews and follow-ups.
 - Filter applications by company, status, or application date.
-- View total applications and status counts on the dashboard.
+- View submitted application totals and separate `Saved` counts on the dashboard.
 
 ## Technology
 
@@ -81,7 +82,9 @@ psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/002_unique_company_name.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/003_auth_schema.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/004_user_owned_applications.sql
-psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO applyr_app; GRANT SELECT, INSERT, UPDATE, DELETE ON public.companies, public.applications, public.application_events, public.auth_users, public.auth_sessions, public.auth_accounts, public.auth_verifications TO applyr_app; GRANT USAGE ON SEQUENCE public.companies_id_seq, public.applications_id_seq, public.application_events_id_seq TO applyr_app;"
+psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/005_auth_rate_limits.sql
+psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/006_saved_applications.sql
+psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO applyr_app; GRANT SELECT, INSERT, UPDATE, DELETE ON public.companies, public.applications, public.application_events, public.auth_users, public.auth_sessions, public.auth_accounts, public.auth_verifications, public.auth_rate_limits TO applyr_app; GRANT USAGE ON SEQUENCE public.companies_id_seq, public.applications_id_seq, public.application_events_id_seq TO applyr_app;"
 ```
 
 These migrations are sequential and one-way. Do not rerun a migration after it
@@ -94,6 +97,32 @@ Back it up and apply only migrations that have not already succeeded. If you
 still need migration 003, apply it and its permissions command before the
 ownership upgrade below. Keep `DATABASE_URL` connected as `applyr_app`, not
 `postgres`.
+
+### Add Saved status to an existing database
+
+If migrations 001 through 005 have already succeeded, back up the database and
+apply **only** `apps/server/database/migrations/006_saved_applications.sql` once
+as the schema owner. In Neon, select the intended branch and database in SQL
+Editor, paste that file's complete contents, and run it. Do not recreate tables
+or rerun the earlier migrations.
+
+Migration 006 preserves existing records and ownership policies. It allows a
+null application date only for `Saved`; every other status still needs a date.
+Its lock timeout safely aborts the transaction if the table is busy; retry the
+complete migration later only if the previous attempt did not succeed.
+
+For deployment, apply 006 first, then deploy the updated server, then the updated
+web app. Do not create Saved records until both deployments are ready, and
+refresh open browser tabs. Older clients do not understand `Saved` or null dates.
+Once Saved records exist, rolling back to the old app requires a separate data
+compatibility plan; do not restore the old NOT NULL constraint over saved jobs.
+
+To use the feature, choose **Add application**, fill in the company and role,
+optionally keep the job link, and select **Saved**. No application date is needed.
+Later, edit it to **Applied** and enter the actual date. Saved jobs appear first
+in date sorts and can be found with the Saved status filter. An application-date
+filter only matches jobs that have been applied to. Dashboard totals exclude
+Saved jobs, which have their own count.
 
 ### Upgrade existing records to per-user ownership
 
@@ -115,6 +144,7 @@ fresh setup commands again.
    After migration 004, full backups must still use an administrator that can
    bypass row-level security. Do not add `--enable-row-security`: it can produce
    only the rows visible to the backup user. See [PostgreSQL's pg_dump guide](https://www.postgresql.org/docs/18/app-pgdump.html).
+
 3. Find the account that should own the existing records:
 
    ```bash
@@ -126,6 +156,7 @@ fresh setup commands again.
    004 assigns all existing companies and applications to this one owner and
    preserves their IDs and events. If existing records belong to different
    people, stop and plan their assignments before running this migration.
+
 4. Replace `CONFIRMED_USER_ID` with that account's exact `id`, then run both
    options in the same `psql` command so they share one database connection:
 
@@ -137,6 +168,7 @@ fresh setup commands again.
    the migration fails and its transaction rolls back. A lock timeout also
    rolls it back; close other open transactions before retrying. Do not rerun it
    after `COMMIT` succeeds.
+
 5. Verify the runtime role cannot bypass the ownership policies:
 
    ```bash
@@ -279,7 +311,7 @@ superuser, or a role with `BYPASSRLS`. See [PostgreSQL's row security guide](htt
 
 ## 5. Run Applyr
 
-Start the API in one terminal:
+From the repository root, start the API in one terminal:
 
 ```bash
 npm run dev:server
@@ -301,6 +333,45 @@ and a **Sign out** button once your session is loaded.
 Use `localhost:5173` for the frontend, not `127.0.0.1` or Vite's next available
 port. It must match `WEB_ORIGIN`. Google's registered callback still points to
 Express on port 3000; Better Auth then returns you to the frontend on port 5173.
+
+### If the API exits immediately
+
+If the terminal shows both of these messages, the file watcher is still running,
+but the API process has exited:
+
+```text
+server running on http://localhost:3000
+Completed running 'src/server.ts'. Waiting for file changes before restarting...
+```
+
+One possible cause is another project, such as a Next.js app, already using port
+3000. On Windows, check for a listener in PowerShell:
+
+```powershell
+netstat -ano -p tcp | Select-String ':3000\s'
+```
+
+Look for a `LISTENING` row with local port `3000`; the last column is its process
+ID (PID). Use Task Manager's **Details** tab to help identify the process. Do not
+stop all Node.js processes or stop a process you have not identified.
+
+To resolve a confirmed port conflict:
+
+1. Press `Ctrl+C` in the waiting Applyr server terminal.
+2. Stop the competing app with `Ctrl+C` in its own terminal, or configure that
+   app to use another port.
+3. From the Applyr repository root, run `npm run dev:server` again.
+4. Open `http://localhost:3000/api/health`. Expect JSON with `"status": "ok"`
+   and a timestamp. This checks the API listener, not the database connection.
+
+Keep Applyr on port 3000: Vite's API proxy, `BETTER_AUTH_URL`, and Google's local
+callback are configured for it. Changing only `PORT` would leave those settings
+pointing at the wrong server.
+
+The current startup callback logs success without checking for a listen error.
+[Express 5 passes listen errors to that callback](https://expressjs.com/en/guide/migrating-5/#app.listen),
+so the startup message alone does not prove that Applyr owns the port. The steps
+above resolve the port conflict; they do not change that logging behavior.
 
 ### How frontend authentication works
 
@@ -415,19 +486,26 @@ audience settings. Use temporary test records, not applications you need to keep
    const requests = [
      ["GET", `/api/applications/${foreignId}`],
      ["PUT", `/api/applications/${foreignId}`, applicationInput],
-     ["POST", `/api/applications/${foreignId}/events`, {
-       eventType: "Follow-up", eventDate: "2026-09-06",
-     }],
+     [
+       "POST",
+       `/api/applications/${foreignId}/events`,
+       {
+         eventType: "Follow-up",
+         eventDate: "2026-09-06",
+       },
+     ],
      ["DELETE", `/api/applications/${foreignId}`],
    ];
    for (const [method, path, body] of requests) {
      const response = await fetch(path, {
        method,
        credentials: "same-origin",
-       ...(body === undefined ? {} : {
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify(body),
-       }),
+       ...(body === undefined
+         ? {}
+         : {
+             headers: { "Content-Type": "application/json" },
+             body: JSON.stringify(body),
+           }),
      });
      console.log(method, response.status);
    }
@@ -436,6 +514,7 @@ audience settings. Use temporary test records, not applications you need to keep
    Every request must return `404`, not `400` or `403`. The valid test bodies
    ensure validation does not hide an ownership bug. The browser supplies its
    own session cookie and write-request `Origin`; do not copy or share cookies.
+
 4. Refresh account A. Its application, company website, and event must be
    unchanged. Repeat in the other direction using B's temporary application ID.
 5. Edit the status of B's own application and add an event successfully. Only B's
@@ -452,7 +531,12 @@ Run these steps after signing in:
 4. Open its details and add an event.
 5. Edit its status and confirm the dashboard count changes.
 6. Delete it and confirm it disappears.
-7. Visit an unknown route and confirm the not-found page offers navigation.
+7. Save a job using `Saved` with no application date. Confirm it appears under the
+   Saved filter and displays "Not applied yet" in its details. Its count should
+   increase without changing Total applications.
+8. Edit that saved job to `Applied`. A blank date must prevent submission. Add a
+   date, save, and confirm the Saved count decreases and Total applications rises.
+9. Visit an unknown route and confirm the not-found page offers navigation.
 
 ## API routes
 
@@ -480,14 +564,142 @@ status `400`. Missing applications, applications owned by someone else, or
 unknown routes return `404`, and unexpected server failures return `500`.
 Better Auth owns its `/api/auth/*` response formats.
 
-## Deployment note
+## Production preparation (Checkpoint 6)
 
-The current repository runs Vite and Express separately; Express does not serve
-the built React application. A production deployment must provide Express with
-`DATABASE_URL`, route browser requests under `/api/*` to Express, and make
-non-file frontend routes fall back to `index.html`. All auth environment variables
-must also be configured with production values. Before public release, repeat
-the two-account ownership checks in the deployed environment and finish
-production OAuth setup and proxy-aware shared rate limiting. The current auth
-rate limiter uses in-process
-memory, which is appropriate for local checks, not a shared serverless limit.
+The deployment uses two Vercel projects from this repository: `apps/web` and
+`apps/server`, with PostgreSQL on Neon. Express already exports its app from
+`apps/server/src/app.ts`; `server.ts` starts the listener for local development.
+This checkpoint prepares the code. It does not deploy projects, change Google
+OAuth settings, or apply migrations to your existing databases.
+
+### One public origin for the browser
+
+```text
+Browser: https://<web-domain>/api/...
+  -> web routing middleware: attach trusted visitor IP and proxy secret
+  -> web rewrite: forward /api/... to https://<backend-domain>/api/...
+  -> Express: verify proxy secret, then session/origin/ownership checks
+  -> Neon: restricted runtime role and user-scoped transactions
+```
+
+`apps/web/vercel.json` forwards `/api/:path*` to
+`https://applyr-server.vercel.app/api/:path*` before the React `index.html`
+fallback. Explicit destinations avoid the deployment's missing-`destination`
+validation error without depending on TypeScript configuration evaluation or
+`API_ORIGIN`. The backend hostname is public configuration, not a secret; update
+this file if the backend domain changes. Local Vite is unchanged and continues
+forwarding `/api` to `http://localhost:3000`.
+
+Configure these values in the Vercel dashboards for Production:
+
+| Variable                                    | Web project                                     | Server project                                                   |
+| ------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
+| `PROXY_SHARED_SECRET`                       | Same new random secret                          | Same new random secret                                           |
+| `NODE_ENV`                                  | Vercel's production build default               | `production`                                                     |
+| `BETTER_AUTH_URL`                           | Not needed                                      | `https://<web-domain>`                                           |
+| `WEB_ORIGIN`                                | Not needed                                      | `https://<web-domain>`                                           |
+| `BETTER_AUTH_SECRET`                        | Not needed                                      | Separate random secret                                           |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Not needed                                      | Production OAuth credentials                                     |
+| `DATABASE_URL`                              | Not needed                                      | Restricted runtime login, Neon pooled URL, `sslmode=verify-full` |
+| `DB_POOL_MAX`                               | Not needed                                      | `5` initially (allowed range: 2–20)                              |
+
+Generate the two secrets separately with:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+Never commit the output, use `VITE_` for these settings, or put them in React
+code. The proxy secret belongs to deployment middleware and Express only. After
+changing it, deploy both projects with the matching value; mismatches block API
+access. The existing frontend deployment will need these settings before its API
+proxy can work. `API_ORIGIN` is no longer used and can be removed from the web
+project. Do not add the production proxy secret or database credentials to
+Preview. Without the proxy secret, web middleware rejects preview API requests
+with `503` before forwarding them. Isolated previews require both a separate
+rewrite destination and isolated backend/database/secrets; preview environment
+settings alone do not change the static destination.
+
+Register this production Google redirect URI **on the web origin**:
+
+```text
+https://<web-domain>/api/auth/callback/google
+```
+
+Both server auth origins must match in production. Cookies remain host-only;
+do not set a shared `.vercel.app` cookie domain or enable broad CORS. Google login
+and callback requests travel through the same web-origin API proxy.
+
+### Trusted IPs and shared authentication limits
+
+`apps/web/middleware.ts` reads Vercel's visitor IP, validates it with Zod, and
+overwrites the internal IP/secret request headers. Express checks the secret
+before trusting the IP. Unauthenticated direct requests to the backend,
+including its health endpoint, return `403`; use the **web-origin** health URL.
+This secret protects the proxy boundary, not user identity: session, origin,
+and per-user ownership checks still run separately.
+
+Locally, Express uses the socket address and overwrites supplied IP headers.
+Production uses Better Auth's atomic PostgreSQL counters in `auth_rate_limits`;
+development uses memory. Separate instances therefore share the production
+limit. Expired counters are pruned opportunistically when a bucket resets, not
+by a scheduled TTL job. These limits cover Better Auth endpoints, not every
+business API route. See [Better Auth rate limiting](https://better-auth.com/docs/concepts/rate-limit).
+
+### Database readiness
+
+Use Neon's **pooled** connection string for the runtime, with the restricted
+`applyr_app` login and `sslmode=verify-full`. Use a separate schema-owner/direct
+connection for migrations. Do not use `neondb_owner`, an administrative role,
+or a member of `neon_superuser` in the deployed API. Do not disable TLS certificate
+verification. The `pg` pool is shared within each instance, defaults to five
+connections, waits at most ten seconds for a connection, and releases idle
+connections after five seconds. Vercel's pool helper also releases idle
+connections before instance suspension. The pool limit is **per instance**, not
+a deployment-wide maximum. See [Vercel connection pooling](https://vercel.com/kb/guide/connection-pooling-with-functions).
+
+For an existing database where 001–004 already succeeded, back it up and apply
+005 once as its schema owner, without rerunning 001–004. Local PostgreSQL example:
+
+```bash
+psql -h localhost -p 5432 -U postgres -d job_tracker -X -v ON_ERROR_STOP=1 \
+  -f apps/server/database/migrations/005_auth_rate_limits.sql \
+  -c "GRANT SELECT, INSERT, UPDATE, DELETE ON public.auth_rate_limits TO applyr_app;"
+```
+
+After 005 succeeds, apply **006** using the
+[Saved status upgrade](#add-saved-status-to-an-existing-database) instructions
+before deploying the updated server and web app. If 005 already succeeded,
+skip the command above and apply only 006.
+
+Use the full `psql.exe` path shown earlier if needed. For a fresh Neon database,
+apply 001–006 in order and grant the table/sequence privileges listed in local
+setup. If legacy records exist, follow the ownership migration instructions
+first; never invent a legacy owner. Migration 005 needs no sequence grant and
+does not change application records. Local development does not require 005
+immediately because its limiter still uses memory.
+
+Before deploying, run `npm run db:check` from a private shell configured with
+the production `DATABASE_URL` and `NODE_ENV=production`. The check rejects
+administrative runtime roles and table ownership, missing/unforced RLS, and a
+missing rate-limit table or its CRUD grants. It does not create tables, grant
+permissions, or replace the two-account isolation test. It does not yet check
+the Saved constraints from 006; confirm that migration succeeded separately.
+
+### Release gate (Checkpoint 7)
+
+Run `npm run verify` and `npm run auth:check -w @applyr/server` with the intended
+environment. Then deploy and check the real two-project behavior:
+
+- Open `https://<web-domain>/api/health`; direct backend API access without the
+  proxy secret should be rejected.
+- Sign in with Google, refresh a protected page, and sign out. Confirm the
+  callback uses the web domain, cookies are Secure/HttpOnly, and API responses
+  have `Cache-Control: no-store`.
+- Confirm two different clients get distinct trusted IPs through the deployed
+  proxy, and forged incoming IP headers do not change the recorded identity.
+  Never expose or log the proxy secret while checking.
+- Repeat the two-account isolation checks above against the deployed database.
+- Keep Google production publishing, deployment protection/access settings,
+  actual Neon TLS connectivity, and the deployed cookie/IP round trip as
+  explicit release checks; local tests cannot verify these platform settings.
