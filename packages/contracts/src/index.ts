@@ -39,3 +39,13 @@ export type {
   DashboardSummary,
   DashboardSummaryResponse,
 } from "./dashboard.js";
+
+export {
+  RESUME_MAX_BYTES,
+  RESUME_MEDIA_TYPES,
+  resumeFileNameSchema,
+  resumeMediaTypeSchema,
+  resumeResponseSchema,
+  resumeSchema,
+} from "./resume.js";
+export type { Resume, ResumeMediaType, ResumeResponse } from "./resume.js";

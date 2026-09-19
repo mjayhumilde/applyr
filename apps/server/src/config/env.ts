@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const optionalStorageSetting = z
+  .string()
+  .optional()
+  .transform((value) => value?.trim() || undefined);
+
 const envSchema = z
   .object({
     NODE_ENV: z
@@ -8,6 +13,8 @@ const envSchema = z
     VERCEL: z.literal("1").optional(),
     PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
     DB_POOL_MAX: z.coerce.number().int().min(2).max(20).default(5),
+    BLOB_STORE_ID: optionalStorageSetting,
+    BLOB_READ_WRITE_TOKEN: optionalStorageSetting,
     DATABASE_URL: z.url({
       protocol: /^postgres(?:ql)?$/,
     }),

@@ -11,6 +11,7 @@ import {
   insertApplication,
   updateApplicationById,
 } from "./application.repository.js";
+import { tryCleanupUserResumes } from "../resumes/resume.service.js";
 
 export async function listApplications(userId: string): Promise<Application[]> {
   const applications = await findAllApplications(userId);
@@ -44,5 +45,7 @@ export async function deleteApplication(
   userId: string,
   applicationId: number,
 ): Promise<boolean> {
-  return deleteApplicationById(userId, applicationId);
+  const deleted = await deleteApplicationById(userId, applicationId);
+  if (deleted) await tryCleanupUserResumes(userId);
+  return deleted;
 }

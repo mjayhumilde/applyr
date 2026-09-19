@@ -12,6 +12,7 @@ import { trustedClientIp } from "./middleware/trusted-client-ip.middleware.js";
 import { applicationRouter } from "./modules/applications/application.route.js";
 import { dashboardRouter } from "./modules/dashboard/dashboard.route.js";
 import { healthRouter } from "./modules/health/health.route.js";
+import { resumeRouter } from "./modules/resumes/resume.route.js";
 
 export function createApp(): Express {
   const app = express();
@@ -32,6 +33,8 @@ export function createApp(): Express {
 
   // All other API routes require a verified session; writes also check origin.
   app.use("/api", requireAuth, requireTrustedOrigin);
+  // Resume uploads use their own binary parser, after application ownership.
+  app.use("/api/applications/:applicationId/resume", resumeRouter);
   app.use(express.json({ limit: "100kb" }));
 
   app.use("/api/applications", applicationRouter);

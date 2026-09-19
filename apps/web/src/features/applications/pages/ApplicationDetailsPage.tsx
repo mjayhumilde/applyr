@@ -14,6 +14,7 @@ import { actionClassNames } from "../../../shared/styles/actionStyles";
 import { getApplication } from "../api/applications.api";
 import { ApplicationDetailsPanel } from "../components/ApplicationDetailsPanel";
 import { ApplicationEventForm } from "../components/ApplicationEventForm";
+import { ApplicationResumePanel } from "../components/ApplicationResumePanel";
 import { ApplicationTimeline } from "../components/ApplicationTimeline";
 import { DeleteApplicationButton } from "../components/DeleteApplicationButton";
 
@@ -227,7 +228,10 @@ const ApplicationDetailsPage = () => {
         state.status === "success" &&
         state.applicationId === parsedApplicationId && (
           <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-            <ApplicationDetailsPanel application={state.application} />
+            <div className="grid min-w-0 gap-4">
+              <ApplicationDetailsPanel application={state.application} />
+              <ApplicationResumePanel applicationId={parsedApplicationId} />
+            </div>
             <div className="grid min-w-0 gap-4">
               <ApplicationTimeline events={state.application.events} />
               <ApplicationEventForm

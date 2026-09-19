@@ -14,6 +14,8 @@ spreadsheet.
 - Add dated events such as interviews and follow-ups.
 - Filter applications by company, status, or application date.
 - View submitted application totals and separate `Saved` counts on the dashboard.
+- Attach the resume used for each application: upload, preview, download the
+  original, replace, or remove a private PDF/DOCX (up to 4 MiB).
 
 ## Technology
 
@@ -21,6 +23,7 @@ spreadsheet.
 - Node.js, Express, TypeScript, and Zod
 - Better Auth for Google sign-in and session management
 - PostgreSQL through raw parameterized SQL with `pg`
+- Private Vercel Blob for resume files; PostgreSQL stores ownership and metadata
 - npm workspaces for the monorepo
 
 ```text
@@ -84,6 +87,7 @@ psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/004_user_owned_applications.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/005_auth_rate_limits.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/006_saved_applications.sql
+psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/007_application_resumes.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO applyr_app; GRANT SELECT, INSERT, UPDATE, DELETE ON public.companies, public.applications, public.application_events, public.auth_users, public.auth_sessions, public.auth_accounts, public.auth_verifications, public.auth_rate_limits TO applyr_app; GRANT USAGE ON SEQUENCE public.companies_id_seq, public.applications_id_seq, public.application_events_id_seq TO applyr_app;"
 ```
 
@@ -123,6 +127,23 @@ Later, edit it to **Applied** and enter the actual date. Saved jobs appear first
 in date sorts and can be found with the Saved status filter. An application-date
 filter only matches jobs that have been applied to. Dashboard totals exclude
 Saved jobs, which have their own count.
+
+### Add resumes to an existing database
+
+If migrations 001 through 006 already succeeded, back up the database and apply
+**only** `apps/server/database/migrations/007_application_resumes.sql` once as
+the schema owner. In Neon, confirm the intended branch and database, then run
+that file's complete contents in SQL Editor. This implementation does not apply
+the migration automatically or change your production database.
+
+Migration 007 adds the resume metadata/lifecycle table, enables and forces
+row-level security, and grants the existing `applyr_app` role access. It does not
+store file bytes in PostgreSQL or modify existing applications. A partial unique
+index allows only one current resume per application. Deleting an application
+retains its file-tracking row until the private object can be cleaned up.
+
+Apply 007 and configure private storage before deploying the server, then deploy
+the web app. Both deployments still need the existing matching proxy secret.
 
 ### Upgrade existing records to per-user ownership
 
@@ -215,6 +236,74 @@ Verify the connection:
 ```bash
 npm run db:check
 ```
+
+### Configure private resume storage
+
+1. In Vercel, create a **private** Blob store and connect it to **applyr-server**
+   for Production. Do not use a public store or attach production storage to
+   the web project or Preview environments.
+2. Set the server project's `BLOB_STORE_ID` to the store ID. On Vercel the SDK
+   uses the automatically supplied OIDC token. If using token authentication
+   instead, set the store's `BLOB_READ_WRITE_TOKEN` on the server project only.
+   Do not set both methods to different stores.
+3. For local development, create a separate private development store and put
+   **its** `BLOB_READ_WRITE_TOKEN` in `apps/server/.env`. Never point routine
+   development or tests at the production store. Keep the unused setting blank.
+4. Restart the local API, or redeploy the server after saving Vercel variables.
+
+See Vercel's [private storage guide](https://vercel.com/docs/vercel-blob/private-storage)
+and [SDK authentication guide](https://vercel.com/docs/vercel-blob/using-blob-sdk).
+Never paste tokens into React code, `VITE_` variables, screenshots, or commits.
+The app can start without Blob credentials; resume upload/download then return
+a clear storage-not-configured error. Migration 007 is still required.
+
+Open an application's details and use **Resume used** after saving the
+application. Choose a PDF or DOCX and select Upload resume. View resume opens an
+authenticated full-screen preview with Download original and Close controls.
+Close returns to the application without losing your place. Escape also closes
+the preview, except when the browser's built-in PDF viewer captures that key;
+use Close in that case.
+Download original retrieves the exact uploaded bytes.
+Replacing a resume requires confirmation and keeps the old one current until
+the new upload is validated, stored, and committed. This is not version history:
+the previous file is scheduled for deletion after replacement.
+
+Limits and trade-offs:
+
+- 4 MiB per file, below the platform's server-upload request limit. See
+  [Vercel server uploads](https://vercel.com/docs/vercel-blob/server-upload).
+- 50 MiB of tracked files per user and 20 upload attempts per rolling hour,
+  enforced in PostgreSQL across server instances. Pending/cleanup files also
+  consume quota; a replacement temporarily needs room for both files.
+- Original filenames are metadata only. Blob keys are random, and every
+  metadata, preview, download, and write request checks application ownership.
+  Private object URLs and storage credentials are never sent to the browser.
+- PDF preview uses the browser viewer. DOCX preview is loaded on demand in a
+  scriptless, network-restricted frame; formatting can differ from Word.
+  Download the original for the exact layout. No Google/Microsoft viewer is used.
+- The server screens signatures and DOCX structure, decompression size, macros,
+  embedded programs, and external resource relationships. This is **not an
+  antivirus scanner** or a guarantee that an original document is harmless.
+- Blob usage has separate storage/transfer limits. These per-user application
+  limits do not guarantee the project stays within its hosting plan's allowance.
+
+File deletion is tracked and retried, not a cross-service database transaction.
+Uploads, removals, and application deletion attempt a bounded cleanup batch.
+Abandoned pending uploads become eligible after one hour. If there is no later
+activity, an operator must run cleanup; there is no scheduled cleanup job yet.
+From a private shell with the intended database and Blob configuration, this
+Git Bash sequence prompts for one exact `auth_users.id` (not an email):
+
+```bash
+read -r -p "User ID to clean up: " applyr_cleanup_user_id
+npm run resumes:cleanup --workspace=@applyr/server -- "$applyr_cleanup_user_id"
+unset applyr_cleanup_user_id
+```
+
+The command processes at most four tracked objects for that owner. Repeat until
+`deletedCount` and `failedCount` are both zero. If failures persist, check storage
+configuration before retrying. Do not manually delete tracking rows: they are
+needed to find orphaned objects. After pending uploads expire, run another batch.
 
 ### Configure local Google authentication
 
@@ -344,8 +433,7 @@ server running on http://localhost:3000
 Completed running 'src/server.ts'. Waiting for file changes before restarting...
 ```
 
-One possible cause is another project, such as a Next.js app, already using port
-3000. On Windows, check for a listener in PowerShell:
+One possible cause is another project, such as a Next.js app, already using port 3000. On Windows, check for a listener in PowerShell:
 
 ```powershell
 netstat -ano -p tcp | Select-String ':3000\s'
@@ -537,24 +625,44 @@ Run these steps after signing in:
 8. Edit that saved job to `Applied`. A blank date must prevent submission. Add a
    date, save, and confirm the Saved count decreases and Total applications rises.
 9. Visit an unknown route and confirm the not-found page offers navigation.
+10. Attach a PDF to an application; preview it and download the original. Repeat
+    with DOCX, including a filename with spaces. Refresh and confirm it persists.
+11. Try an unsupported, empty, or over-4-MiB file. Then replace a valid resume,
+    cancel a removal, and confirm a removal. An unsuccessful replacement must
+    leave the existing attachment usable.
+12. In account B, request account A's `/resume` and `/resume/file` endpoints and
+    try upload/removal: all must return `404`. Signed-out requests return `401`.
+    Delete a temporary application with a resume and verify private storage
+    cleanup. Test with a development database/store before the production check.
 
 ## API routes
 
-| Method   | Route                                     | Success                                |
-| -------- | ----------------------------------------- | -------------------------------------- |
-| `GET`    | `/api/health`                             | `200` health response                  |
-| `GET`    | `/api/auth/ok`                            | `200` auth health response             |
-| `GET`    | `/api/auth/get-session`                   | `200` session or `null`                |
-| `POST`   | `/api/auth/sign-in/social`                | Google sign-in redirect information    |
-| `GET`    | `/api/auth/callback/google`               | Google callback handled by Better Auth |
-| `POST`   | `/api/auth/sign-out`                      | `200` session revoked                  |
-| `GET`    | `/api/dashboard`                          | `200` application summary              |
-| `GET`    | `/api/applications`                       | `200` application list                 |
-| `POST`   | `/api/applications`                       | `201` created application              |
-| `GET`    | `/api/applications/:applicationId`        | `200` application details              |
-| `PUT`    | `/api/applications/:applicationId`        | `200` updated application              |
-| `DELETE` | `/api/applications/:applicationId`        | `204` with no response body            |
-| `POST`   | `/api/applications/:applicationId/events` | `201` created event                    |
+| Method   | Route                                          | Success                                |
+| -------- | ---------------------------------------------- | -------------------------------------- |
+| `GET`    | `/api/health`                                  | `200` health response                  |
+| `GET`    | `/api/auth/ok`                                 | `200` auth health response             |
+| `GET`    | `/api/auth/get-session`                        | `200` session or `null`                |
+| `POST`   | `/api/auth/sign-in/social`                     | Google sign-in redirect information    |
+| `GET`    | `/api/auth/callback/google`                    | Google callback handled by Better Auth |
+| `POST`   | `/api/auth/sign-out`                           | `200` session revoked                  |
+| `GET`    | `/api/dashboard`                               | `200` application summary              |
+| `GET`    | `/api/applications`                            | `200` application list                 |
+| `POST`   | `/api/applications`                            | `201` created application              |
+| `GET`    | `/api/applications/:applicationId`             | `200` application details              |
+| `PUT`    | `/api/applications/:applicationId`             | `200` updated application              |
+| `DELETE` | `/api/applications/:applicationId`             | `204` with no response body            |
+| `POST`   | `/api/applications/:applicationId/events`      | `201` created event                    |
+| `GET`    | `/api/applications/:applicationId/resume`      | `200` metadata or `null`               |
+| `PUT`    | `/api/applications/:applicationId/resume`      | `200` uploaded/replaced metadata       |
+| `GET`    | `/api/applications/:applicationId/resume/file` | `200` original file bytes              |
+| `DELETE` | `/api/applications/:applicationId/resume`      | `204` attachment removed               |
+
+Resume uploads use a raw binary body with the canonical PDF/DOCX `Content-Type`
+and a percent-encoded `X-Resume-Filename` header, not JSON or multipart form data.
+The authenticated raw-body parser is limited to 4 MiB; other JSON API limits are
+unchanged. File requests may include `download=1` and `resumeId=<metadata UUID>`;
+a replaced version returns `409` instead of downloading bytes under a stale
+filename. Size/quota violations return `413` and upload rate limits return `429`.
 
 Application and dashboard routes require a verified session; missing or invalid
 sessions return `401`. Writes must also supply an `Origin` matching
@@ -592,16 +700,17 @@ forwarding `/api` to `http://localhost:3000`.
 
 Configure these values in the Vercel dashboards for Production:
 
-| Variable                                    | Web project                                     | Server project                                                   |
-| ------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
-| `PROXY_SHARED_SECRET`                       | Same new random secret                          | Same new random secret                                           |
-| `NODE_ENV`                                  | Vercel's production build default               | `production`                                                     |
-| `BETTER_AUTH_URL`                           | Not needed                                      | `https://<web-domain>`                                           |
-| `WEB_ORIGIN`                                | Not needed                                      | `https://<web-domain>`                                           |
-| `BETTER_AUTH_SECRET`                        | Not needed                                      | Separate random secret                                           |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Not needed                                      | Production OAuth credentials                                     |
-| `DATABASE_URL`                              | Not needed                                      | Restricted runtime login, Neon pooled URL, `sslmode=verify-full` |
-| `DB_POOL_MAX`                               | Not needed                                      | `5` initially (allowed range: 2–20)                              |
+| Variable                                          | Web project                       | Server project                                                   |
+| ------------------------------------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| `PROXY_SHARED_SECRET`                             | Same new random secret            | Same new random secret                                           |
+| `NODE_ENV`                                        | Vercel's production build default | `production`                                                     |
+| `BETTER_AUTH_URL`                                 | Not needed                        | `https://<web-domain>`                                           |
+| `WEB_ORIGIN`                                      | Not needed                        | `https://<web-domain>`                                           |
+| `BETTER_AUTH_SECRET`                              | Not needed                        | Separate random secret                                           |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`       | Not needed                        | Production OAuth credentials                                     |
+| `DATABASE_URL`                                    | Not needed                        | Restricted runtime login, Neon pooled URL, `sslmode=verify-full` |
+| `DB_POOL_MAX`                                     | Not needed                        | `5` initially (allowed range: 2–20)                              |
+| `BLOB_STORE_ID` (OIDC) or `BLOB_READ_WRITE_TOKEN` | Not needed                        | Private server-project resume store; see storage setup above     |
 
 Generate the two secrets separately with:
 
@@ -670,10 +779,12 @@ psql -h localhost -p 5432 -U postgres -d job_tracker -X -v ON_ERROR_STOP=1 \
 After 005 succeeds, apply **006** using the
 [Saved status upgrade](#add-saved-status-to-an-existing-database) instructions
 before deploying the updated server and web app. If 005 already succeeded,
-skip the command above and apply only 006.
+skip the command above and apply only 006. Then apply **007** using the
+[resume upgrade](#add-resumes-to-an-existing-database) instructions. Skip any
+migration that has already succeeded.
 
 Use the full `psql.exe` path shown earlier if needed. For a fresh Neon database,
-apply 001–006 in order and grant the table/sequence privileges listed in local
+apply 001–007 in order and grant the table/sequence privileges listed in local
 setup. If legacy records exist, follow the ownership migration instructions
 first; never invent a legacy owner. Migration 005 needs no sequence grant and
 does not change application records. Local development does not require 005
@@ -682,8 +793,8 @@ immediately because its limiter still uses memory.
 Before deploying, run `npm run db:check` from a private shell configured with
 the production `DATABASE_URL` and `NODE_ENV=production`. The check rejects
 administrative runtime roles and table ownership, missing/unforced RLS, and a
-missing rate-limit table or its CRUD grants. It does not create tables, grant
-permissions, or replace the two-account isolation test. It does not yet check
+missing rate-limit/resume tables or their CRUD grants. It does not create tables,
+grant permissions, or replace the two-account isolation test. It does not yet check
 the Saved constraints from 006; confirm that migration succeeded separately.
 
 ### Release gate (Checkpoint 7)

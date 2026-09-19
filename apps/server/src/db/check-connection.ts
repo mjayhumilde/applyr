@@ -33,7 +33,12 @@ async function checkProductionDatabase(): Promise<void> {
     );
   }
 
-  const ownedTableNames = ["companies", "applications", "application_events"];
+  const ownedTableNames = [
+    "companies",
+    "applications",
+    "application_events",
+    "application_resumes",
+  ];
   const ownedTables = await pool.query<OwnedTableCheckRow>(
     `
       SELECT
@@ -58,7 +63,7 @@ async function checkProductionDatabase(): Promise<void> {
 
     if (!table || !table.rls_enabled || !table.rls_forced) {
       throw new Error(
-        `public.${name} must exist with row-level security enabled and forced. Apply migrations 001 through 004 as the schema owner before deploying.`,
+        `public.${name} must exist with row-level security enabled and forced. Apply migrations 001 through 007 as the schema owner before deploying.`,
       );
     }
 
@@ -67,6 +72,22 @@ async function checkProductionDatabase(): Promise<void> {
         `The production database login can act as the owner of public.${name}. Use a separate runtime role without ownership or membership in the table-owning role.`,
       );
     }
+  }
+
+  const resumePrivileges = await pool.query<{
+    has_required_privileges: boolean;
+  }>(`
+    SELECT (
+      has_table_privilege(current_user, 'public.application_resumes', 'SELECT')
+      AND has_table_privilege(current_user, 'public.application_resumes', 'INSERT')
+      AND has_table_privilege(current_user, 'public.application_resumes', 'UPDATE')
+      AND has_table_privilege(current_user, 'public.application_resumes', 'DELETE')
+    ) AS has_required_privileges;
+  `);
+  if (!resumePrivileges.rows[0]?.has_required_privileges) {
+    throw new Error(
+      "Resume storage requires application_resumes CRUD privileges. Apply migration 007 as the schema owner.",
+    );
   }
 
   const rateLimit = await pool.query<{ has_required_privileges: boolean }>(`
@@ -92,7 +113,7 @@ async function checkProductionDatabase(): Promise<void> {
 
   // These catalog checks complement, not replace, the two-account isolation test.
   console.log(
-    "Production database role, RLS flags, and rate-limit table checks passed",
+    "Production database role, RLS flags, rate-limit, and resume table checks passed",
   );
 }
 
