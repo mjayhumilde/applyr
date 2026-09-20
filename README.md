@@ -9,6 +9,8 @@ spreadsheet.
 - Sign in with Google and sign out through database-backed sessions.
 - Keep each user's applications, companies, events, and dashboard counts private.
 - Create, view, edit, and delete job applications.
+- Optionally record salary as free text, including ranges, currency/pay period,
+  or "Negotiable"; edit or clear it later.
 - Save jobs to apply to later with `Saved`, then track them through `Applied`,
   `Interview`, `Offer`, and `Rejected`.
 - Add dated events such as interviews and follow-ups.
@@ -88,6 +90,7 @@ psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/005_auth_rate_limits.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/006_saved_applications.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/007_application_resumes.sql
+psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/008_application_salary.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO applyr_app; GRANT SELECT, INSERT, UPDATE, DELETE ON public.companies, public.applications, public.application_events, public.auth_users, public.auth_sessions, public.auth_accounts, public.auth_verifications, public.auth_rate_limits TO applyr_app; GRANT USAGE ON SEQUENCE public.companies_id_seq, public.applications_id_seq, public.application_events_id_seq TO applyr_app;"
 ```
 
@@ -144,6 +147,30 @@ retains its file-tracking row until the private object can be cleaned up.
 
 Apply 007 and configure private storage before deploying the server, then deploy
 the web app. Both deployments still need the existing matching proxy secret.
+
+### Add salary to an existing database
+
+If migrations 001 through 007 already succeeded, back up the database and apply
+**only** `apps/server/database/migrations/008_application_salary.sql` once as the
+schema owner. For local pgAdmin or Neon's SQL Editor, select the intended database
+and branch, then run the file's complete contents. Apply it separately to local
+and production databases; the app does not run migrations automatically.
+
+Migration 008 adds nullable `salary TEXT` with a nonblank, 255-character limit.
+Existing applications keep all their data and have `NULL` salary. Ownership
+policies and permissions are unchanged. Its five-second lock timeout aborts
+safely if the table is busy; retry the complete migration only after confirming
+the previous attempt did not succeed.
+
+Apply 008 **before** deploying the updated server, then deploy the web app.
+The server's application queries need the new column even when salary is blank.
+
+The optional **Salary** field appears when adding or editing an application and
+in its details. Enter descriptive text such as `PHP 30,000-40,000/month` or
+`Negotiable`. Values are trimmed; clearing the field saves `NULL` and displays
+"Not specified". The API also accepts omitted salary: creation stores `NULL`,
+while updates preserve the existing value. Send explicit `null` to clear it.
+Salary is descriptive text, not a numeric amount used for calculations.
 
 ### Upgrade existing records to per-user ownership
 
@@ -634,6 +661,9 @@ Run these steps after signing in:
     try upload/removal: all must return `404`. Signed-out requests return `401`.
     Delete a temporary application with a resume and verify private storage
     cleanup. Test with a development database/store before the production check.
+13. Create applications with salary blank and with a salary range. Edit the
+    salary, refresh details, then clear it and confirm "Not specified" appears.
+    The field and API must reject values over 255 characters.
 
 ## API routes
 
@@ -780,11 +810,12 @@ After 005 succeeds, apply **006** using the
 [Saved status upgrade](#add-saved-status-to-an-existing-database) instructions
 before deploying the updated server and web app. If 005 already succeeded,
 skip the command above and apply only 006. Then apply **007** using the
-[resume upgrade](#add-resumes-to-an-existing-database) instructions. Skip any
-migration that has already succeeded.
+[resume upgrade](#add-resumes-to-an-existing-database) instructions, then **008**
+using the [salary upgrade](#add-salary-to-an-existing-database) instructions.
+Skip any migration that has already succeeded.
 
 Use the full `psql.exe` path shown earlier if needed. For a fresh Neon database,
-apply 001–007 in order and grant the table/sequence privileges listed in local
+apply 001–008 in order and grant the table/sequence privileges listed in local
 setup. If legacy records exist, follow the ownership migration instructions
 first; never invent a legacy owner. Migration 005 needs no sequence grant and
 does not change application records. Local development does not require 005
@@ -792,9 +823,10 @@ immediately because its limiter still uses memory.
 
 Before deploying, run `npm run db:check` from a private shell configured with
 the production `DATABASE_URL` and `NODE_ENV=production`. The check rejects
-administrative runtime roles and table ownership, missing/unforced RLS, and a
-missing rate-limit/resume tables or their CRUD grants. It does not create tables,
-grant permissions, or replace the two-account isolation test. It does not yet check
+administrative runtime roles and table ownership, missing/unforced RLS,
+missing rate-limit/resume tables or their CRUD grants, and a missing or incorrectly
+defined salary column. It does not create tables, grant permissions, or replace
+the two-account isolation test. It does not yet check
 the Saved constraints from 006; confirm that migration succeeded separately.
 
 ### Release gate (Checkpoint 7)

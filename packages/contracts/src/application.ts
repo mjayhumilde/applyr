@@ -2,6 +2,15 @@ import { z } from "zod";
 import { companySchema } from "./company.js";
 import { applicationEventSchema } from "./application_event.js";
 
+export const APPLICATION_SALARY_MAX_LENGTH = 255;
+
+const applicationSalarySchema = z
+  .string()
+  .trim()
+  .max(APPLICATION_SALARY_MAX_LENGTH)
+  .transform((value) => (value === "" ? null : value))
+  .nullable();
+
 export const applicationStatusSchema = z.enum([
   "Saved",
   "Applied",
@@ -14,6 +23,8 @@ const applicationRecordSchema = z.object({
   id: z.number().int().positive(),
   company: companySchema,
   role: z.string().trim().min(1).max(255),
+  // Older responses can omit salary during a rolling deployment.
+  salary: applicationSalarySchema.default(null),
   jobPostLink: z.url({ protocol: /^https?$/ }).nullable(),
   status: applicationStatusSchema,
   dateApplied: z.iso.date().nullable(),
@@ -55,6 +66,8 @@ const applicationWriteSchema = applicationRecordSchema
   })
   .extend({
     company: companySchema.omit({ id: true }),
+    // Omission preserves the existing salary on update; null clears it.
+    salary: applicationSalarySchema.optional(),
   })
   .superRefine(validateApplicationDate);
 

@@ -63,7 +63,7 @@ async function checkProductionDatabase(): Promise<void> {
 
     if (!table || !table.rls_enabled || !table.rls_forced) {
       throw new Error(
-        `public.${name} must exist with row-level security enabled and forced. Apply migrations 001 through 007 as the schema owner before deploying.`,
+        `public.${name} must exist with row-level security enabled and forced. Apply migrations 001 through 008 as the schema owner before deploying.`,
       );
     }
 
@@ -72,6 +72,28 @@ async function checkProductionDatabase(): Promise<void> {
         `The production database login can act as the owner of public.${name}. Use a separate runtime role without ownership or membership in the table-owning role.`,
       );
     }
+  }
+
+  const salaryColumn = await pool.query<{ has_salary_column: boolean }>(`
+    SELECT EXISTS (
+      SELECT 1
+      FROM pg_attribute AS a
+      JOIN pg_class AS c ON c.oid = a.attrelid
+      JOIN pg_namespace AS n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+        AND c.relname = 'applications'
+        AND a.attname = 'salary'
+        AND a.attnum > 0
+        AND NOT a.attisdropped
+        AND a.atttypid = 'text'::regtype
+        AND NOT a.attnotnull
+    ) AS has_salary_column;
+  `);
+
+  if (!salaryColumn.rows[0]?.has_salary_column) {
+    throw new Error(
+      "public.applications.salary must exist as nullable TEXT. Apply migration 008 as the schema owner before deploying salary support.",
+    );
   }
 
   const resumePrivileges = await pool.query<{
@@ -113,7 +135,7 @@ async function checkProductionDatabase(): Promise<void> {
 
   // These catalog checks complement, not replace, the two-account isolation test.
   console.log(
-    "Production database role, RLS flags, rate-limit, and resume table checks passed",
+    "Production database role, RLS flags, salary column, rate-limit, and resume table checks passed",
   );
 }
 

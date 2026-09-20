@@ -1,4 +1,5 @@
 import {
+  APPLICATION_SALARY_MAX_LENGTH,
   applicationStatusSchema,
   createApplicationRequestSchema,
   type ApplicationStatus,
@@ -20,6 +21,7 @@ type ApplicationFormFieldName =
   | "companyName"
   | "companyWebsite"
   | "role"
+  | "salary"
   | "jobPostLink"
   | "status"
   | "dateApplied"
@@ -38,6 +40,7 @@ const fieldNameByIssuePath: Partial<Record<string, ApplicationFormFieldName>> =
     "company.name": "companyName",
     "company.website": "companyWebsite",
     role: "role",
+    salary: "salary",
     jobPostLink: "jobPostLink",
     status: "status",
     dateApplied: "dateApplied",
@@ -49,6 +52,7 @@ const fieldErrorMessages = {
   companyWebsite:
     "Enter a website starting with https:// or http://, or leave it blank.",
   role: "Enter a role between 1 and 255 characters.",
+  salary: `Enter a salary of ${APPLICATION_SALARY_MAX_LENGTH} characters or fewer, or leave it blank.`,
   jobPostLink:
     "Enter a job link starting with https:// or http://, or leave it blank.",
   status: "Choose an application status from the list.",
@@ -158,6 +162,7 @@ export function ApplicationForm({
         website: emptyStringToNull(getTextValue(formData, "companyWebsite")),
       },
       role: getTextValue(formData, "role"),
+      salary: emptyStringToNull(getTextValue(formData, "salary")),
       jobPostLink: emptyStringToNull(getTextValue(formData, "jobPostLink")),
       status: getTextValue(formData, "status"),
       dateApplied: isSaved ? null : getTextValue(formData, "dateApplied"),
@@ -331,6 +336,33 @@ export function ApplicationForm({
               </p>
             )}
           </div>
+        </div>
+
+        <div className="min-w-0">
+          <label className="text-sm font-medium text-ink" htmlFor="salary">
+            Salary <span className="text-muted">(optional)</span>
+          </label>
+          <input
+            aria-describedby={
+              fieldErrors.salary ? "salary-hint salary-error" : "salary-hint"
+            }
+            aria-invalid={fieldErrors.salary !== undefined}
+            autoComplete="off"
+            className={inputClassName}
+            defaultValue={initialValues?.salary ?? ""}
+            id="salary"
+            maxLength={APPLICATION_SALARY_MAX_LENGTH}
+            name="salary"
+            type="text"
+          />
+          <p className="mt-1 text-sm text-muted" id="salary-hint">
+            For example, PHP 30,000-40,000/month or Negotiable.
+          </p>
+          {fieldErrors.salary !== undefined && (
+            <p className={fieldErrorClassName} id="salary-error">
+              {fieldErrors.salary}
+            </p>
+          )}
         </div>
       </fieldset>
 

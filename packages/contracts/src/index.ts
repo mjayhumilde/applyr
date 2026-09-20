@@ -1,4 +1,5 @@
 export {
+  APPLICATION_SALARY_MAX_LENGTH,
   applicationIdParamsSchema,
   applicationListResponseSchema,
   applicationResponseSchema,

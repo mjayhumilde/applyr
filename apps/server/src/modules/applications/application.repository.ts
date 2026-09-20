@@ -26,6 +26,7 @@ const selectApplicationsSql = `
       'website', c.website
     ) AS company,
     a.role,
+    a.salary,
     a.job_post_link AS "jobPostLink",
     a.status,
     a.date_applied::text AS "dateApplied",
@@ -58,6 +59,7 @@ const groupApplicationsSql = `
     c.name,
     c.website,
     a.role,
+    a.salary,
     a.job_post_link,
     a.status,
     a.date_applied,
@@ -107,9 +109,10 @@ const insertApplicationSql = `
     job_post_link,
     status,
     date_applied,
-    notes
+    notes,
+    salary
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
   RETURNING id;
 `;
 
@@ -122,6 +125,7 @@ const updateApplicationSql = `
     status = $6,
     date_applied = $7,
     notes = $8,
+    salary = CASE WHEN $9::boolean THEN $10::text ELSE salary END,
     updated_at = CURRENT_TIMESTAMP
   WHERE user_id = $1 AND id = $2
   RETURNING id;
@@ -176,6 +180,7 @@ export async function insertApplication(
         input.status,
         input.dateApplied,
         input.notes,
+        input.salary ?? null,
       ],
     );
     const { id: applicationId } = idRowSchema.parse(
@@ -226,6 +231,9 @@ export async function updateApplicationById(
         input.status,
         input.dateApplied,
         input.notes,
+        // Older clients omit salary; only an explicit value or null changes it.
+        input.salary !== undefined,
+        input.salary ?? null,
       ],
     );
     const updatedApplicationRow = applicationIdResult.rows[0];
