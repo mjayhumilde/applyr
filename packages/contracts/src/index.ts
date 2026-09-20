@@ -5,6 +5,7 @@ export {
   applicationResponseSchema,
   applicationSchema,
   applicationStatusSchema,
+  applicationWorkTypeSchema,
   createApplicationRequestSchema,
   updateApplicationRequestSchema,
 } from "./application.js";
@@ -26,6 +27,7 @@ export type {
   ApplicationListResponse,
   ApplicationResponse,
   ApplicationStatus,
+  ApplicationWorkType,
   CreateApplicationRequest,
   UpdateApplicationRequest,
 } from "./application.js";

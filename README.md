@@ -11,6 +11,7 @@ spreadsheet.
 - Create, view, edit, and delete job applications.
 - Optionally record salary as free text, including ranges, currency/pay period,
   or "Negotiable"; edit or clear it later.
+- Optionally track work type as `Remote`, `Onsite`, or `Hybrid`.
 - Save jobs to apply to later with `Saved`, then track them through `Applied`,
   `Interview`, `Offer`, and `Rejected`.
 - Add dated events such as interviews and follow-ups.
@@ -91,6 +92,7 @@ psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/006_saved_applications.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/007_application_resumes.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/008_application_salary.sql
+psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/009_application_work_type.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO applyr_app; GRANT SELECT, INSERT, UPDATE, DELETE ON public.companies, public.applications, public.application_events, public.auth_users, public.auth_sessions, public.auth_accounts, public.auth_verifications, public.auth_rate_limits TO applyr_app; GRANT USAGE ON SEQUENCE public.companies_id_seq, public.applications_id_seq, public.application_events_id_seq TO applyr_app;"
 ```
 
@@ -171,6 +173,28 @@ in its details. Enter descriptive text such as `PHP 30,000-40,000/month` or
 "Not specified". The API also accepts omitted salary: creation stores `NULL`,
 while updates preserve the existing value. Send explicit `null` to clear it.
 Salary is descriptive text, not a numeric amount used for calculations.
+
+### Add work type to an existing database
+
+After migrations 001 through 008 have succeeded, back up the database and apply
+**only** `apps/server/database/migrations/009_application_work_type.sql` once as
+the schema owner. In local pgAdmin or Neon's SQL Editor, confirm the intended
+database and branch, then run the file's complete contents. Local and production
+databases need this migration separately; the app does not apply it automatically.
+
+Migration 009 adds nullable `work_type TEXT` with a check allowing only `Remote`,
+`Onsite`, or `Hybrid`. Existing records keep their data and start with `NULL`
+work type; ownership policies and permissions are unchanged. The five-second
+lock timeout aborts if the table is busy; retry only if the earlier attempt did
+not succeed.
+
+Apply 009 **before** deploying the updated server, then deploy the web app.
+Application queries require the new column even when no work type is selected.
+The optional **Work type** dropdown appears in create/edit forms, with the value
+shown in application details. Choose **Not specified** to clear it to `NULL`.
+The API field is `workType`: creation accepts omission as `NULL`; updates preserve
+the existing value when omitted, and explicit `null` clears it. Other values
+are rejected by both API validation and the database constraint.
 
 ### Upgrade existing records to per-user ownership
 
@@ -664,6 +688,9 @@ Run these steps after signing in:
 13. Create applications with salary blank and with a salary range. Edit the
     salary, refresh details, then clear it and confirm "Not specified" appears.
     The field and API must reject values over 255 characters.
+14. Create an application without a work type, then try Remote, Onsite, and Hybrid.
+    Edit and refresh to confirm the selection persists. Choose Not specified to
+    clear it; salary and the other application fields should remain unchanged.
 
 ## API routes
 
@@ -812,10 +839,12 @@ before deploying the updated server and web app. If 005 already succeeded,
 skip the command above and apply only 006. Then apply **007** using the
 [resume upgrade](#add-resumes-to-an-existing-database) instructions, then **008**
 using the [salary upgrade](#add-salary-to-an-existing-database) instructions.
+Finally apply **009** using the
+[work type upgrade](#add-work-type-to-an-existing-database) instructions.
 Skip any migration that has already succeeded.
 
 Use the full `psql.exe` path shown earlier if needed. For a fresh Neon database,
-apply 001–008 in order and grant the table/sequence privileges listed in local
+apply 001–009 in order and grant the table/sequence privileges listed in local
 setup. If legacy records exist, follow the ownership migration instructions
 first; never invent a legacy owner. Migration 005 needs no sequence grant and
 does not change application records. Local development does not require 005
@@ -825,8 +854,8 @@ Before deploying, run `npm run db:check` from a private shell configured with
 the production `DATABASE_URL` and `NODE_ENV=production`. The check rejects
 administrative runtime roles and table ownership, missing/unforced RLS,
 missing rate-limit/resume tables or their CRUD grants, and a missing or incorrectly
-defined salary column. It does not create tables, grant permissions, or replace
-the two-account isolation test. It does not yet check
+defined salary or work-type column. It does not create tables, grant permissions,
+or replace the two-account isolation test. It does not yet check
 the Saved constraints from 006; confirm that migration succeeded separately.
 
 ### Release gate (Checkpoint 7)

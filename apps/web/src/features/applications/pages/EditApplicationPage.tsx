@@ -30,6 +30,7 @@ function toApplicationFormValues(
     },
     role: application.role,
     salary: application.salary,
+    workType: application.workType,
     jobPostLink: application.jobPostLink,
     status: application.status,
     dateApplied: application.dateApplied,

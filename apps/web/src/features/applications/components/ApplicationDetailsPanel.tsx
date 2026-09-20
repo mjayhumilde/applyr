@@ -68,13 +68,25 @@ export function ApplicationDetailsPanel({
             )}
           </dd>
         </div>
-        <div className="min-w-0 sm:col-span-2">
+        <div className="min-w-0">
           <dt className="font-data text-xs font-semibold text-muted">Salary</dt>
           <dd className="mt-2 text-sm font-semibold text-ink wrap-anywhere">
             {application.salary === null ? (
               <span className="text-muted">Not specified</span>
             ) : (
               application.salary
+            )}
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="font-data text-xs font-semibold text-muted">
+            Work type
+          </dt>
+          <dd className="mt-2 text-sm font-semibold text-ink">
+            {application.workType === null ? (
+              <span className="text-muted">Not specified</span>
+            ) : (
+              application.workType
             )}
           </dd>
         </div>

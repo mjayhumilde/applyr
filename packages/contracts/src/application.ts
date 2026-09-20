@@ -11,6 +11,8 @@ const applicationSalarySchema = z
   .transform((value) => (value === "" ? null : value))
   .nullable();
 
+export const applicationWorkTypeSchema = z.enum(["Remote", "Onsite", "Hybrid"]);
+
 export const applicationStatusSchema = z.enum([
   "Saved",
   "Applied",
@@ -25,6 +27,8 @@ const applicationRecordSchema = z.object({
   role: z.string().trim().min(1).max(255),
   // Older responses can omit salary during a rolling deployment.
   salary: applicationSalarySchema.default(null),
+  // Older responses can omit work type during a rolling deployment.
+  workType: applicationWorkTypeSchema.nullable().default(null),
   jobPostLink: z.url({ protocol: /^https?$/ }).nullable(),
   status: applicationStatusSchema,
   dateApplied: z.iso.date().nullable(),
@@ -68,6 +72,8 @@ const applicationWriteSchema = applicationRecordSchema
     company: companySchema.omit({ id: true }),
     // Omission preserves the existing salary on update; null clears it.
     salary: applicationSalarySchema.optional(),
+    // Omission preserves the existing work type on update; null clears it.
+    workType: applicationWorkTypeSchema.nullable().optional(),
   })
   .superRefine(validateApplicationDate);
 
@@ -87,6 +93,7 @@ export const applicationListResponseSchema = z.object({
 });
 
 export type ApplicationStatus = z.infer<typeof applicationStatusSchema>;
+export type ApplicationWorkType = z.infer<typeof applicationWorkTypeSchema>;
 export type Application = z.infer<typeof applicationSchema>;
 export type CreateApplicationRequest = z.infer<
   typeof createApplicationRequestSchema
