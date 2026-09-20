@@ -30,19 +30,24 @@ const contentTypesSchema = z.object({
   }),
 });
 const relationshipsSchema = z.object({
-  Relationships: z.object({
-    Relationship: z
-      .array(
-        z.object({
-          "@_Type": z.string(),
-          "@_Target": z.string(),
-          // Reject encoded/unknown modes rather than interpreting them
-          // differently from a browser or Word when the original is opened.
-          "@_TargetMode": z.enum(["External", "Internal"]).optional(),
-        }),
-      )
-      .default([]),
-  }),
+  Relationships: z.preprocess(
+    // The XML parser represents an empty <Relationships/> element as "".
+    // Normalize only that case; malformed values must still fail validation.
+    (value) => (value === "" ? {} : value),
+    z.object({
+      Relationship: z
+        .array(
+          z.object({
+            "@_Type": z.string(),
+            "@_Target": z.string(),
+            // Reject encoded/unknown modes rather than interpreting them
+            // differently from a browser or Word when the original is opened.
+            "@_TargetMode": z.enum(["External", "Internal"]).optional(),
+          }),
+        )
+        .default([]),
+    }),
+  ),
 });
 
 function invalidFile(message: string): HttpError {
