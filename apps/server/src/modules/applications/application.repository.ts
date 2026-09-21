@@ -28,6 +28,7 @@ const selectApplicationsSql = `
     a.role,
     a.salary,
     a.work_type AS "workType",
+    a.job_description AS "jobDescription",
     a.job_post_link AS "jobPostLink",
     a.status,
     a.date_applied::text AS "dateApplied",
@@ -62,6 +63,7 @@ const groupApplicationsSql = `
     a.role,
     a.salary,
     a.work_type,
+    a.job_description,
     a.job_post_link,
     a.status,
     a.date_applied,
@@ -113,9 +115,10 @@ const insertApplicationSql = `
     date_applied,
     notes,
     salary,
-    work_type
+    work_type,
+    job_description
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
   RETURNING id;
 `;
 
@@ -130,6 +133,7 @@ const updateApplicationSql = `
     notes = $8,
     salary = CASE WHEN $9::boolean THEN $10::text ELSE salary END,
     work_type = CASE WHEN $11::boolean THEN $12::text ELSE work_type END,
+    job_description = CASE WHEN $13::boolean THEN $14::text ELSE job_description END,
     updated_at = CURRENT_TIMESTAMP
   WHERE user_id = $1 AND id = $2
   RETURNING id;
@@ -186,6 +190,7 @@ export async function insertApplication(
         input.notes,
         input.salary ?? null,
         input.workType ?? null,
+        input.jobDescription ?? null,
       ],
     );
     const { id: applicationId } = idRowSchema.parse(
@@ -242,6 +247,9 @@ export async function updateApplicationById(
         // An omitted work type must not erase a value set by a newer client.
         input.workType !== undefined,
         input.workType ?? null,
+        // Omission preserves a saved description; explicit null clears it.
+        input.jobDescription !== undefined,
+        input.jobDescription ?? null,
       ],
     );
     const updatedApplicationRow = applicationIdResult.rows[0];

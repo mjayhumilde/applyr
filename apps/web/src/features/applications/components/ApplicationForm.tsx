@@ -1,4 +1,5 @@
 import {
+  APPLICATION_JOB_DESCRIPTION_MAX_LENGTH,
   APPLICATION_SALARY_MAX_LENGTH,
   applicationStatusSchema,
   applicationWorkTypeSchema,
@@ -25,6 +26,7 @@ type ApplicationFormFieldName =
   | "salary"
   | "workType"
   | "jobPostLink"
+  | "jobDescription"
   | "status"
   | "dateApplied"
   | "notes";
@@ -45,6 +47,7 @@ const fieldNameByIssuePath: Partial<Record<string, ApplicationFormFieldName>> =
     salary: "salary",
     workType: "workType",
     jobPostLink: "jobPostLink",
+    jobDescription: "jobDescription",
     status: "status",
     dateApplied: "dateApplied",
     notes: "notes",
@@ -59,6 +62,7 @@ const fieldErrorMessages = {
   workType: "Choose a work type from the list, or leave it unspecified.",
   jobPostLink:
     "Enter a job link starting with https:// or http://, or leave it blank.",
+  jobDescription: `Use plain text without null characters, up to ${APPLICATION_JOB_DESCRIPTION_MAX_LENGTH.toLocaleString("en-US")} characters, or leave it blank.`,
   status: "Choose an application status from the list.",
   dateApplied: "Choose a valid application date.",
   notes: "Enter your notes as text, or leave this field blank.",
@@ -169,6 +173,9 @@ export function ApplicationForm({
       salary: emptyStringToNull(getTextValue(formData, "salary")),
       workType: emptyStringToNull(getTextValue(formData, "workType")),
       jobPostLink: emptyStringToNull(getTextValue(formData, "jobPostLink")),
+      jobDescription: emptyStringToNull(
+        getTextValue(formData, "jobDescription"),
+      ),
       status: getTextValue(formData, "status"),
       dateApplied: isSaved ? null : getTextValue(formData, "dateApplied"),
       notes: emptyStringToNull(getTextValue(formData, "notes")),
@@ -398,6 +405,39 @@ export function ApplicationForm({
               </p>
             )}
           </div>
+        </div>
+
+        <div className="min-w-0">
+          <label
+            className="text-sm font-medium text-ink"
+            htmlFor="jobDescription"
+          >
+            Job description <span className="text-muted">(optional)</span>
+          </label>
+          <textarea
+            aria-describedby={
+              fieldErrors.jobDescription
+                ? "jobDescription-hint jobDescription-error"
+                : "jobDescription-hint"
+            }
+            aria-invalid={fieldErrors.jobDescription !== undefined}
+            className={`${inputClassName} resize-y`}
+            defaultValue={initialValues?.jobDescription ?? ""}
+            id="jobDescription"
+            maxLength={APPLICATION_JOB_DESCRIPTION_MAX_LENGTH}
+            name="jobDescription"
+            rows={7}
+          />
+          <p className="mt-1 text-sm text-muted" id="jobDescription-hint">
+            Paste the responsibilities and requirements from the job posting. Up
+            to {APPLICATION_JOB_DESCRIPTION_MAX_LENGTH.toLocaleString("en-US")}{" "}
+            characters. Keep your own comments in Notes.
+          </p>
+          {fieldErrors.jobDescription !== undefined && (
+            <p className={fieldErrorClassName} id="jobDescription-error">
+              {fieldErrors.jobDescription}
+            </p>
+          )}
         </div>
       </fieldset>
 

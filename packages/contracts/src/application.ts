@@ -2,7 +2,18 @@ import { z } from "zod";
 import { companySchema } from "./company.js";
 import { applicationEventSchema } from "./application_event.js";
 
+export const APPLICATION_JOB_DESCRIPTION_MAX_LENGTH = 10_000;
 export const APPLICATION_SALARY_MAX_LENGTH = 255;
+
+const applicationJobDescriptionSchema = z
+  .string()
+  .trim()
+  .max(APPLICATION_JOB_DESCRIPTION_MAX_LENGTH)
+  .refine((value) => !value.includes("\u0000"), {
+    message: "Remove unsupported null characters from the job description",
+  })
+  .transform((value) => (value === "" ? null : value))
+  .nullable();
 
 const applicationSalarySchema = z
   .string()
@@ -30,6 +41,8 @@ const applicationRecordSchema = z.object({
   // Older responses can omit work type during a rolling deployment.
   workType: applicationWorkTypeSchema.nullable().default(null),
   jobPostLink: z.url({ protocol: /^https?$/ }).nullable(),
+  // Older responses can omit job description during a rolling deployment.
+  jobDescription: applicationJobDescriptionSchema.default(null),
   status: applicationStatusSchema,
   dateApplied: z.iso.date().nullable(),
   notes: z.string().nullable(),
@@ -74,6 +87,8 @@ const applicationWriteSchema = applicationRecordSchema
     salary: applicationSalarySchema.optional(),
     // Omission preserves the existing work type on update; null clears it.
     workType: applicationWorkTypeSchema.nullable().optional(),
+    // Omission preserves the existing description on update; null clears it.
+    jobDescription: applicationJobDescriptionSchema.optional(),
   })
   .superRefine(validateApplicationDate);
 

@@ -12,6 +12,8 @@ spreadsheet.
 - Optionally record salary as free text, including ranges, currency/pay period,
   or "Negotiable"; edit or clear it later.
 - Optionally track work type as `Remote`, `Onsite`, or `Hybrid`.
+- Optionally save the job description as plain text (up to 10,000 characters),
+  keeping its line breaks and your personal notes separate.
 - Save jobs to apply to later with `Saved`, then track them through `Applied`,
   `Interview`, `Offer`, and `Rejected`.
 - Add dated events such as interviews and follow-ups.
@@ -93,6 +95,7 @@ psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/007_application_resumes.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/008_application_salary.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/009_application_work_type.sql
+psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/010_application_job_description.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO applyr_app; GRANT SELECT, INSERT, UPDATE, DELETE ON public.companies, public.applications, public.application_events, public.auth_users, public.auth_sessions, public.auth_accounts, public.auth_verifications, public.auth_rate_limits TO applyr_app; GRANT USAGE ON SEQUENCE public.companies_id_seq, public.applications_id_seq, public.application_events_id_seq TO applyr_app;"
 ```
 
@@ -195,6 +198,32 @@ shown in application details. Choose **Not specified** to clear it to `NULL`.
 The API field is `workType`: creation accepts omission as `NULL`; updates preserve
 the existing value when omitted, and explicit `null` clears it. Other values
 are rejected by both API validation and the database constraint.
+
+### Add job descriptions to an existing database
+
+After migrations 001 through 009 have succeeded, back up the database and apply
+**only** `apps/server/database/migrations/010_application_job_description.sql`
+once as the schema owner. In local pgAdmin or Neon's SQL Editor, confirm the
+intended database and branch, then run the file's complete contents. Apply it
+separately to local and production databases; migrations are not automatic.
+
+Migration 010 adds nullable `job_description TEXT` with a nonblank,
+10,000-character limit. Existing records, salary/work type, ownership policies,
+and permissions remain unchanged; existing descriptions start as `NULL`.
+Its five-second lock timeout aborts safely if the table is busy. Retry only if
+the previous attempt did not succeed.
+
+Apply 010 **before** deploying the updated server, then deploy the web app.
+Application queries need the new column even when descriptions are blank.
+Use the optional **Job description** text area in create/edit forms to keep the
+posting's responsibilities and requirements. Details preserve internal line
+breaks and display everything as plain text, not rendered HTML or Markdown.
+Keep your own comments in the separate **Notes** field.
+
+The API field is `jobDescription`. Leading/trailing whitespace is trimmed;
+blank text or explicit `null` clears it. Omission stores `NULL` during creation
+and preserves the existing description during updates, so older clients do not
+erase it. The form, shared API validation, and database enforce the length limit.
 
 ### Upgrade existing records to per-user ownership
 
@@ -691,6 +720,10 @@ Run these steps after signing in:
 14. Create an application without a work type, then try Remote, Onsite, and Hybrid.
     Edit and refresh to confirm the selection persists. Choose Not specified to
     clear it; salary and the other application fields should remain unchanged.
+15. Create an application with a multiline job description, edit it, and refresh
+    to confirm it persists with line breaks. Clear it and confirm the empty state;
+    personal notes, salary, and work type must remain unchanged. Try the
+    10,000-character boundary and confirm longer values cannot be saved.
 
 ## API routes
 
@@ -839,12 +872,14 @@ before deploying the updated server and web app. If 005 already succeeded,
 skip the command above and apply only 006. Then apply **007** using the
 [resume upgrade](#add-resumes-to-an-existing-database) instructions, then **008**
 using the [salary upgrade](#add-salary-to-an-existing-database) instructions.
-Finally apply **009** using the
+Then apply **009** using the
 [work type upgrade](#add-work-type-to-an-existing-database) instructions.
+Finally apply **010** using the
+[job description upgrade](#add-job-descriptions-to-an-existing-database) instructions.
 Skip any migration that has already succeeded.
 
 Use the full `psql.exe` path shown earlier if needed. For a fresh Neon database,
-apply 001–009 in order and grant the table/sequence privileges listed in local
+apply 001–010 in order and grant the table/sequence privileges listed in local
 setup. If legacy records exist, follow the ownership migration instructions
 first; never invent a legacy owner. Migration 005 needs no sequence grant and
 does not change application records. Local development does not require 005
@@ -854,8 +889,8 @@ Before deploying, run `npm run db:check` from a private shell configured with
 the production `DATABASE_URL` and `NODE_ENV=production`. The check rejects
 administrative runtime roles and table ownership, missing/unforced RLS,
 missing rate-limit/resume tables or their CRUD grants, and a missing or incorrectly
-defined salary or work-type column. It does not create tables, grant permissions,
-or replace the two-account isolation test. It does not yet check
+defined salary, work-type, or job-description column. It does not create tables,
+grant permissions, or replace the two-account isolation test. It does not yet check
 the Saved constraints from 006; confirm that migration succeeded separately.
 
 ### Release gate (Checkpoint 7)

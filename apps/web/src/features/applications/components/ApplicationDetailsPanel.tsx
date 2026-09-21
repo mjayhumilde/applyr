@@ -112,6 +112,20 @@ export function ApplicationDetailsPanel({
         </div>
       </dl>
 
+      <div className="border-t border-border py-5">
+        <h3 className="text-lg font-bold text-ink">Job description</h3>
+        {application.jobDescription === null ? (
+          <p className="mt-2 text-sm text-muted">
+            No job description added. Edit this application to keep the
+            responsibilities and requirements from the posting.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-ink wrap-anywhere">
+            {application.jobDescription}
+          </p>
+        )}
+      </div>
+
       <div className="border-t border-border pt-5">
         <h3 className="text-lg font-bold text-ink">Notes</h3>
         {application.notes?.trim() ? (
