@@ -10,6 +10,7 @@ const statusClassNames = {
   Interview: "border-interview/25 bg-interview/10 text-interview",
   Offer: "border-offer/25 bg-offer/10 text-offer",
   Rejected: "border-danger/25 bg-danger/10 text-danger",
+  "No Response": "border-control bg-muted/10 text-ink",
 } satisfies Record<ApplicationStatus, string>;
 
 export function StatusBadge({ status }: StatusBadgeProps) {

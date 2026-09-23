@@ -63,7 +63,7 @@ async function checkProductionDatabase(): Promise<void> {
 
     if (!table || !table.rls_enabled || !table.rls_forced) {
       throw new Error(
-        `public.${name} must exist with row-level security enabled and forced. Apply migrations 001 through 010 as the schema owner before deploying.`,
+        `public.${name} must exist with row-level security enabled and forced. Apply migrations 001 through 011 as the schema owner before deploying.`,
       );
     }
 

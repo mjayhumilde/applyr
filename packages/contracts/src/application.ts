@@ -30,6 +30,7 @@ export const applicationStatusSchema = z.enum([
   "Interview",
   "Offer",
   "Rejected",
+  "No Response",
 ]);
 
 const applicationRecordSchema = z.object({

@@ -26,6 +26,7 @@ const applicationStatusOrder = {
   Interview: 2,
   Offer: 3,
   Rejected: 4,
+  "No Response": 5,
 } satisfies Record<ApplicationStatus, number>;
 
 function sortApplications(

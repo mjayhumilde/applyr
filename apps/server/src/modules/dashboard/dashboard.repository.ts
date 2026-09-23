@@ -15,7 +15,8 @@ const findDashboardSummarySql = `
       'Applied', (COUNT(*) FILTER (WHERE status = 'Applied'))::integer,
       'Interview', (COUNT(*) FILTER (WHERE status = 'Interview'))::integer,
       'Offer', (COUNT(*) FILTER (WHERE status = 'Offer'))::integer,
-      'Rejected', (COUNT(*) FILTER (WHERE status = 'Rejected'))::integer
+      'Rejected', (COUNT(*) FILTER (WHERE status = 'Rejected'))::integer,
+      'No Response', (COUNT(*) FILTER (WHERE status = 'No Response'))::integer
     ) AS "byStatus"
   FROM public.applications
   WHERE user_id = $1;

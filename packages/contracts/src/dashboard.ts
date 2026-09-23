@@ -10,6 +10,7 @@ export const dashboardSummarySchema = z.object({
     Interview: applicationCountSchema,
     Offer: applicationCountSchema,
     Rejected: applicationCountSchema,
+    "No Response": applicationCountSchema,
   }),
 });
 

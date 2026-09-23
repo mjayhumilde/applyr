@@ -15,7 +15,7 @@ spreadsheet.
 - Optionally save the job description as plain text (up to 10,000 characters),
   keeping its line breaks and your personal notes separate.
 - Save jobs to apply to later with `Saved`, then track them through `Applied`,
-  `Interview`, `Offer`, and `Rejected`.
+  `Interview`, `Offer`, `Rejected`, and `No Response`.
 - Add dated events such as interviews and follow-ups.
 - Filter applications by company, status, or application date.
 - View submitted application totals and separate `Saved` counts on the dashboard.
@@ -96,6 +96,7 @@ psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/008_application_salary.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/009_application_work_type.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/010_application_job_description.sql
+psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -f apps/server/database/migrations/011_no_response_status.sql
 psql -h localhost -p 5432 -U postgres -d job_tracker -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO applyr_app; GRANT SELECT, INSERT, UPDATE, DELETE ON public.companies, public.applications, public.application_events, public.auth_users, public.auth_sessions, public.auth_accounts, public.auth_verifications, public.auth_rate_limits TO applyr_app; GRANT USAGE ON SEQUENCE public.companies_id_seq, public.applications_id_seq, public.application_events_id_seq TO applyr_app;"
 ```
 
@@ -224,6 +225,30 @@ The API field is `jobDescription`. Leading/trailing whitespace is trimmed;
 blank text or explicit `null` clears it. Omission stores `NULL` during creation
 and preserves the existing description during updates, so older clients do not
 erase it. The form, shared API validation, and database enforce the length limit.
+
+### Add No Response status to an existing database
+
+After migrations 001 through 010 have succeeded, back up the database and apply
+**only** `apps/server/database/migrations/011_no_response_status.sql` once as
+the schema owner. In local pgAdmin or Neon's SQL Editor, confirm the intended
+database and branch, then run the file's complete contents. Apply it separately
+to local and production; the app does not run migrations automatically.
+
+Migration 011 adds `No Response` to the allowed statuses without changing
+existing records, permissions, or ownership policies. Like every status except
+`Saved`, it requires an application date. The five-second lock timeout safely
+aborts if the table is busy; retry only if the previous attempt did not succeed.
+
+Apply 011 first, deploy the updated server, then deploy the web app. Wait for
+both deployments before using the new status and refresh open browser tabs.
+Older versions cannot read `No Response` records; rolling back after creating
+them requires a separate compatibility plan.
+
+Choose **No Response** manually when adding or editing an application that you
+submitted but have not heard back about. There is no automatic waiting period
+or status change. It appears in filters, status sorting, badges, and its own
+dashboard count, and is included in Total applications. Keep the original
+application date; this status does not create a timeline event automatically.
 
 ### Upgrade existing records to per-user ownership
 
@@ -724,6 +749,10 @@ Run these steps after signing in:
     to confirm it persists with line breaks. Clear it and confirm the empty state;
     personal notes, salary, and work type must remain unchanged. Try the
     10,000-character boundary and confirm longer values cannot be saved.
+16. Change an applied application's status to No Response, keeping its original
+    application date. Refresh, filter by No Response, and sort by status. Its
+    dashboard count should rise without changing Total applications. Switching
+    a Saved job to No Response must require a date before saving.
 
 ## API routes
 
@@ -874,12 +903,14 @@ skip the command above and apply only 006. Then apply **007** using the
 using the [salary upgrade](#add-salary-to-an-existing-database) instructions.
 Then apply **009** using the
 [work type upgrade](#add-work-type-to-an-existing-database) instructions.
-Finally apply **010** using the
+Then apply **010** using the
 [job description upgrade](#add-job-descriptions-to-an-existing-database) instructions.
+Finally apply **011** using the
+[No Response status upgrade](#add-no-response-status-to-an-existing-database) instructions.
 Skip any migration that has already succeeded.
 
 Use the full `psql.exe` path shown earlier if needed. For a fresh Neon database,
-apply 001–010 in order and grant the table/sequence privileges listed in local
+apply 001–011 in order and grant the table/sequence privileges listed in local
 setup. If legacy records exist, follow the ownership migration instructions
 first; never invent a legacy owner. Migration 005 needs no sequence grant and
 does not change application records. Local development does not require 005
@@ -891,7 +922,8 @@ administrative runtime roles and table ownership, missing/unforced RLS,
 missing rate-limit/resume tables or their CRUD grants, and a missing or incorrectly
 defined salary, work-type, or job-description column. It does not create tables,
 grant permissions, or replace the two-account isolation test. It does not yet check
-the Saved constraints from 006; confirm that migration succeeded separately.
+the status/date constraints from 006 and 011; confirm those migrations succeeded
+separately.
 
 ### Release gate (Checkpoint 7)
 
